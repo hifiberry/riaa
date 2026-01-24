@@ -5,3 +5,4 @@
 test_clickdetect
 test_riaa_clicks
 test_click_energy
+test_lpc
