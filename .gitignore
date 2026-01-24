@@ -1,0 +1,4 @@
+*.so
+*_response.txt
+*.o
+*_response.png
