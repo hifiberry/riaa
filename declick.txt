@@ -1,0 +1,195 @@
+Real-Time Vinyl De-Click Algorithm (DSP Core)
+Target assumptions (adjustable)
+
+Sample rate: 44.1 or 48 kHz
+
+Latency budget: ≤ 5 ms
+
+Click length: ≤ 0.5–1.0 ms
+
+Stereo, process channels independently
+
+🔗 Processing Pipeline (overview)
+Input
+ ↓
+High-Pass Filter (10–12 kHz)
+ ↓
+MAD-based Click Detector
+ ↓
+Click Validation (duration + energy)
+ ↓
+LPC-based Interpolation Repair
+ ↓
+Output
+
+1️⃣ High-Pass Filter (click emphasis)
+
+Clicks are broadband, but HPF boosts detection reliability.
+
+Design
+
+2nd or 4th order Butterworth
+
+Fc = 10–12 kHz
+
+Linear phase not required (this is detection only)
+
+hp[n] = highpass(x[n])
+
+2️⃣ Robust Click Detection (MAD)
+
+This is critical. Do not use fixed thresholds.
+
+Window sizes
+
+Detection window: 0.5–1 ms
+(≈ 32–48 samples @ 48k)
+
+W = window around n
+
+median = MEDIAN(hp[n-W : n+W])
+mad = MEDIAN(|hp[n-W : n+W] - median|)
+
+score = |hp[n] - median| / (mad + ε)
+
+if score > THRESHOLD:
+    mark sample as candidate
+
+Good starting values
+
+THRESHOLD = 6–10
+
+ε = 1e-9
+
+✅ MAD adapts to music level
+✅ Resistant to cymbals compared to RMS
+
+3️⃣ Click Validation (avoid killing drums)
+
+Group contiguous candidate samples into events.
+
+event_length = samples_in_event
+event_energy = sum(|hp[event]|)
+
+Reject if:
+
+event_length > MAX_LEN
+→ protects snare hits
+
+event_energy < MIN_ENERGY
+→ ignore noise
+
+Vinyl-safe values
+Parameter	Value
+MAX_LEN	0.5–1.0 ms
+MIN_ENERGY	adaptive (median based)
+
+Clicks are short and violent. Music transients are longer.
+
+4️⃣ LPC Repair (this is the “magic”)
+
+This is where pro tools separate themselves.
+
+Step A: Define repair region
+[xL ... CLICK ... xR]
+
+
+Context on each side: 2–4 ms
+
+Repair region: detected click samples
+
+Step B: Compute LPC models
+
+Use both sides for stability.
+
+order = 12  // @ 48 kHz
+
+aL = LPC(xL, order)
+aR = LPC(reverse(xR), order)
+
+Step C: Predict missing samples
+for i in click_region:
+    predL[i] = LPC_PREDICT(aL)
+    predR[i] = LPC_PREDICT(aR)
+
+Step D: Crossfade predictions
+α = (i - start) / length
+x̂[i] = (1-α)*predL[i] + α*predR[i]
+
+
+This avoids phase jumps and sounds shockingly transparent.
+
+5️⃣ Stereo handling (important!)
+
+Detect clicks per channel
+
+Repair per channel
+
+Optional: if click detected in both within ±1 sample → treat as same event
+
+Never average channels for repair.
+
+6️⃣ Real-Time Safety Notes
+
+To stay real-time safe:
+
+Fixed buffer sizes
+
+No FFTs
+
+Preallocate LPC buffers
+
+Use Levinson-Durbin recursion
+
+Latency = look-ahead window
+→ ~3–5 ms total, totally acceptable for vinyl playback
+
+7️⃣ Vinyl-Specific Tuning (this matters)
+For older / noisy records
+
+Lower threshold (≈ 6)
+
+Shorter MAX_LEN
+
+Enable repeated micro-click suppression
+
+For audiophile / clean records
+
+Threshold 8–10
+
+Conservative MAX_LEN
+
+Less frequent activation
+
+8️⃣ What not to do ❌
+
+❌ Simple low-pass filtering
+
+❌ Over-long repair windows
+
+❌ Fixed thresholds
+
+❌ Spectral gating in real time
+
+These all destroy transients.
+
+9️⃣ Optional upgrades (later)
+
+Prediction-error detector (AR residual)
+
+Dual-band detector (HP + fullband)
+
+STFT inpainting for long scratches (offline)
+
+ML-based classifier (overkill for clicks)
+
+10️⃣ Minimal MVP feature checklist
+
+If your plugin/box does only this, it’s already good:
+
+✔ Adaptive MAD detection
+✔ Max click length limiter
+✔ LPC interpolation
+✔ Stereo-safe processing
+
+That alone beats most “cheap” de-clickers.
