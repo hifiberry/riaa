@@ -11,18 +11,22 @@ INSTALL_DIR = /usr/local/lib/ladspa
 
 all: $(addsuffix .so,$(PLUGINS))
 
-riaa.so: riaa.o decibel.o counter.o ini.o configfile.o
+riaa.so: riaa.o decibel.o counter.o ini.o configfile.o clickdetect.o biquad.o
 	$(CC) $(LDFLAGS) -o $@ $^ -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Header dependencies
-riaa.o: riaa.c biquad.h riaa.h samplerate.h decibel.h counter.h configfile.h
+riaa.o: riaa.c biquad.h riaa.h samplerate.h decibel.h counter.h configfile.h clickdetect.h
 
 decibel.o: decibel.c decibel.h
 
 counter.o: counter.c counter.h
+
+clickdetect.o: clickdetect.c clickdetect.h biquad.h
+
+biquad.o: biquad.c biquad.h
 
 ini.o: ini.c ini.h
 
