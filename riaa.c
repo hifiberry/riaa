@@ -18,17 +18,21 @@
 #include "configfile.h"
 #include "clickdetect.h"
 
-#define RIAA_GAIN            0
-#define RIAA_SUBSONIC_SEL    1
-#define RIAA_ENABLE          2
-#define RIAA_STORE_SETTINGS  3
-#define RIAA_CLIPPED_SAMPLES 4
-#define RIAA_DETECTED_CLICKS 5
-#define RIAA_CLICK_ENERGY    6
-#define RIAA_INPUT_L         7
-#define RIAA_INPUT_R         8
-#define RIAA_OUTPUT_L        9
-#define RIAA_OUTPUT_R        10
+// Input clipping threshold (99.9% of maximum to account for rounding errors)
+#define INPUT_CLIP_THRESHOLD 0.999f
+
+#define RIAA_GAIN                 0
+#define RIAA_SUBSONIC_SEL         1
+#define RIAA_ENABLE               2
+#define RIAA_STORE_SETTINGS       3
+#define RIAA_INPUT_CLIPPED_SAMPLES 4
+#define RIAA_CLIPPED_SAMPLES      5
+#define RIAA_DETECTED_CLICKS      6
+#define RIAA_CLICK_ENERGY         7
+#define RIAA_INPUT_L              8
+#define RIAA_INPUT_R              9
+#define RIAA_OUTPUT_L             10
+#define RIAA_OUTPUT_R             11
 
 // Subsonic filter selection values
 #define SUBSONIC_OFF       0
@@ -40,6 +44,7 @@ typedef struct {
     LADSPA_Data *subsonic_sel;
     LADSPA_Data *riaa_enable;
     LADSPA_Data *store_settings;
+    LADSPA_Data *input_clipped_samples;
     LADSPA_Data *clipped_samples;
     LADSPA_Data *detected_clicks;
     LADSPA_Data *click_energy;
@@ -48,6 +53,7 @@ typedef struct {
     LADSPA_Data *output_l;
     LADSPA_Data *output_r;
     
+    Counter input_clip_counter;
     Counter clip_counter;
     Counter click_counter;
     int sample_rate_idx;
@@ -79,6 +85,7 @@ static LADSPA_Handle instantiate_RIAA(
     
     RIAA *plugin = (RIAA *)malloc(sizeof(RIAA));
     if (plugin != NULL) {
+        counter_init(&plugin->input_clip_counter);
         counter_init(&plugin->clip_counter);
         counter_init(&plugin->click_counter);
         
@@ -159,6 +166,9 @@ static void connect_port_RIAA(
         case RIAA_STORE_SETTINGS:
             plugin->store_settings = data;
             break;
+        case RIAA_INPUT_CLIPPED_SAMPLES:
+            plugin->input_clipped_samples = data;
+            break;
         case RIAA_CLIPPED_SAMPLES:
             plugin->clipped_samples = data;
             break;
@@ -203,6 +213,11 @@ static void activate_RIAA(LADSPA_Handle instance) {
     memset(&plugin->subsonic_state_l, 0, sizeof(BiquadState));
     memset(&plugin->subsonic_state_r, 0, sizeof(BiquadState));
     
+    // Reset counters
+    counter_reset(&plugin->input_clip_counter);
+    counter_reset(&plugin->clip_counter);
+    counter_reset(&plugin->click_counter);
+    
     // Reset click detectors
     clickdetect_reset(plugin->click_detector_l);
     clickdetect_reset(plugin->click_detector_r);
@@ -230,6 +245,14 @@ static void run_RIAA(
     for (unsigned long i = 0; i < sample_count; i++) {
         LADSPA_Data y_l = input_l[i];
         LADSPA_Data y_r = input_r[i];
+        
+        // Detect input clipping (pre-RIAA) at 99.9% threshold
+        if (y_l > INPUT_CLIP_THRESHOLD || y_l < -INPUT_CLIP_THRESHOLD) {
+            counter_increment(&plugin->input_clip_counter);
+        }
+        if (y_r > INPUT_CLIP_THRESHOLD || y_r < -INPUT_CLIP_THRESHOLD) {
+            counter_increment(&plugin->input_clip_counter);
+        }
         
         // Apply subsonic filter first if enabled (20Hz highpass) - both channels
         if (subsonic_sel == SUBSONIC_1ST_ORDER) {
@@ -268,8 +291,15 @@ static void run_RIAA(
     }
     
     // Update output ports
-    *(plugin->clipped_samples) = (LADSPA_Data)counter_get(&plugin->clip_counter);
-    *(plugin->detected_clicks) = (LADSPA_Data)counter_get(&plugin->click_counter);
+    if (plugin->input_clipped_samples) {
+        *(plugin->input_clipped_samples) = (LADSPA_Data)counter_get(&plugin->input_clip_counter);
+    }
+    if (plugin->clipped_samples) {
+        *(plugin->clipped_samples) = (LADSPA_Data)counter_get(&plugin->clip_counter);
+    }
+    if (plugin->detected_clicks) {
+        *(plugin->detected_clicks) = (LADSPA_Data)counter_get(&plugin->click_counter);
+    }
     
     // Check if settings should be stored
     if (plugin->store_settings && *(plugin->store_settings) != 0.0f) {
@@ -332,10 +362,10 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
             g_riaa_descriptor->Name = strdup("RIAA Equalization with Subsonic Filter (Stereo)");
             g_riaa_descriptor->Maker = strdup("HiFiBerry");
             g_riaa_descriptor->Copyright = strdup("MIT");
-            g_riaa_descriptor->PortCount = 11;
+            g_riaa_descriptor->PortCount = 12;
             
             LADSPA_PortDescriptor *port_descriptors = 
-                (LADSPA_PortDescriptor *)calloc(11, sizeof(LADSPA_PortDescriptor));
+                (LADSPA_PortDescriptor *)calloc(12, sizeof(LADSPA_PortDescriptor));
             port_descriptors[RIAA_GAIN] = 
                 LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL;
             port_descriptors[RIAA_SUBSONIC_SEL] = 
@@ -344,6 +374,8 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
                 LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL;
             port_descriptors[RIAA_STORE_SETTINGS] = 
                 LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL;
+            port_descriptors[RIAA_INPUT_CLIPPED_SAMPLES] = 
+                LADSPA_PORT_OUTPUT | LADSPA_PORT_CONTROL;
             port_descriptors[RIAA_CLIPPED_SAMPLES] = 
                 LADSPA_PORT_OUTPUT | LADSPA_PORT_CONTROL;
             port_descriptors[RIAA_DETECTED_CLICKS] = 
@@ -360,11 +392,12 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
                 LADSPA_PORT_OUTPUT | LADSPA_PORT_AUDIO;
             g_riaa_descriptor->PortDescriptors = port_descriptors;
             
-            const char **port_names = (const char **)calloc(11, sizeof(char *));
+            const char **port_names = (const char **)calloc(12, sizeof(char *));
             port_names[RIAA_GAIN] = strdup(RIAA_PORT_NAME_GAIN);
             port_names[RIAA_SUBSONIC_SEL] = strdup(RIAA_PORT_NAME_SUBSONIC_FILTER);
             port_names[RIAA_ENABLE] = strdup(RIAA_PORT_NAME_ENABLE);
             port_names[RIAA_STORE_SETTINGS] = strdup(PORT_NAME_STORE_SETTINGS);
+            port_names[RIAA_INPUT_CLIPPED_SAMPLES] = strdup("Input Clipped Samples");
             port_names[RIAA_CLIPPED_SAMPLES] = strdup(PORT_NAME_CLIPPED_SAMPLES);
             port_names[RIAA_DETECTED_CLICKS] = strdup(PORT_NAME_DETECTED_CLICKS);
             port_names[RIAA_CLICK_ENERGY] = strdup("Click Energy Threshold");
@@ -375,7 +408,7 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
             g_riaa_descriptor->PortNames = port_names;
             
             LADSPA_PortRangeHint *port_range_hints = 
-                (LADSPA_PortRangeHint *)calloc(11, sizeof(LADSPA_PortRangeHint));
+                (LADSPA_PortRangeHint *)calloc(12, sizeof(LADSPA_PortRangeHint));
             
             // Gain: -40.0 to +40.0 dB, default 0 dB (unity)
             port_range_hints[RIAA_GAIN].HintDescriptor = 
@@ -414,6 +447,7 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
             port_range_hints[RIAA_STORE_SETTINGS].LowerBound = 0.0f;
             port_range_hints[RIAA_STORE_SETTINGS].UpperBound = 1.0f;
             
+            port_range_hints[RIAA_INPUT_CLIPPED_SAMPLES].HintDescriptor = 0;
             port_range_hints[RIAA_CLIPPED_SAMPLES].HintDescriptor = 0;
             port_range_hints[RIAA_DETECTED_CLICKS].HintDescriptor = 0;
             

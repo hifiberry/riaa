@@ -78,22 +78,24 @@ int main(int argc, char *argv[]) {
     float subsonic = 0.0f;       // Port 1: Subsonic Filter (off)
     float riaa_enable = 1.0f;    // Port 2: RIAA Enable (on)
     float store_settings = 0.0f; // Port 3: Store settings (off)
-    float clipped_samples = 0.0f; // Port 4: Clipped Samples (output)
-    float detected_clicks = 0.0f; // Port 5: Detected Clicks (output)
-    float click_energy = 0.0f;    // Port 6: Click Energy Threshold (0 = disabled)
+    float input_clipped_samples = 0.0f; // Port 4: Input Clipped Samples (output)
+    float clipped_samples = 0.0f; // Port 5: Clipped Samples (output)
+    float detected_clicks = 0.0f; // Port 6: Detected Clicks (output)
+    float click_energy = 0.0f;    // Port 7: Click Energy Threshold (0 = disabled)
     
     // Connect ports
     descriptor->connect_port(handle, 0, &gain);
     descriptor->connect_port(handle, 1, &subsonic);
     descriptor->connect_port(handle, 2, &riaa_enable);
     descriptor->connect_port(handle, 3, &store_settings);
-    descriptor->connect_port(handle, 4, &clipped_samples);
-    descriptor->connect_port(handle, 5, &detected_clicks);
-    descriptor->connect_port(handle, 6, &click_energy);
-    descriptor->connect_port(handle, 7, input_l);   // Input L
-    descriptor->connect_port(handle, 8, input_r);   // Input R
-    descriptor->connect_port(handle, 9, output_l);  // Output L
-    descriptor->connect_port(handle, 10, output_r); // Output R
+    descriptor->connect_port(handle, 4, &input_clipped_samples);
+    descriptor->connect_port(handle, 5, &clipped_samples);
+    descriptor->connect_port(handle, 6, &detected_clicks);
+    descriptor->connect_port(handle, 7, &click_energy);
+    descriptor->connect_port(handle, 8, input_l);   // Input L
+    descriptor->connect_port(handle, 9, input_r);   // Input R
+    descriptor->connect_port(handle, 10, output_l);  // Output L
+    descriptor->connect_port(handle, 11, output_r); // Output R
     
     // Activate plugin
     if (descriptor->activate) {
