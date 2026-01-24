@@ -49,7 +49,7 @@ static void calculate_autocorrelation(const LADSPA_Data *signal, int length,
  * Converts autocorrelation to LPC coefficients
  */
 static int levinson_durbin(const LADSPA_Data *r, LADSPA_Data *coeffs, int order) {
-    LADSPA_Data a[LPC_MAX_ORDER + 1];  // Temporary coefficients
+    LADSPA_Data a[LPC_MAX_ORDER];      // Temporary coefficients
     LADSPA_Data k[LPC_MAX_ORDER];      // Reflection coefficients
     LADSPA_Data e;                      // Prediction error
     
@@ -70,12 +70,15 @@ static int levinson_durbin(const LADSPA_Data *r, LADSPA_Data *coeffs, int order)
         }
         k[i] = sum / e;
         
-        // Update coefficients
-        a[i] = k[i];
+        // Update coefficients using temporary storage
+        LADSPA_Data temp[LPC_MAX_ORDER];
         for (int j = 0; j < i; j++) {
-            LADSPA_Data temp = a[j];
-            a[j] = temp - k[i] * a[i - j - 1];
+            temp[j] = a[j] - k[i] * a[i - j - 1];
         }
+        for (int j = 0; j < i; j++) {
+            a[j] = temp[j];
+        }
+        a[i] = k[i];
         
         // Update prediction error
         e *= (1.0f - k[i] * k[i]);
@@ -114,12 +117,12 @@ LADSPA_Data lpc_predict(const LPCPredictor *predictor) {
     int pos = predictor->history_pos;
     
     // Predict based on weighted sum of past samples
-    // prediction = -sum(a[i] * x[n-i-1]) for i = 0..order-1
-    // Note: coeffs already have negative sign from Levinson-Durbin
+    // prediction = sum(a[i] * x[n-i-1]) for i = 0..order-1
+    // Coefficients are already negated, so we add them directly
     for (int i = 0; i < predictor->order; i++) {
         // Go backwards through history (most recent first)
         pos = (pos - 1 + LPC_MAX_ORDER) % LPC_MAX_ORDER;
-        prediction += predictor->coeffs[i] * predictor->history[pos];
+        prediction -= predictor->coeffs[i] * predictor->history[pos];
     }
     
     return prediction;
