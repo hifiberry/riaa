@@ -3,3 +3,5 @@
 *.o
 *_response.png
 test_clickdetect
+test_riaa_clicks
+test_click_energy
