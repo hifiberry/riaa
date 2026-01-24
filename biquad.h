@@ -69,4 +69,26 @@ static inline LADSPA_Data process_biquad(
     return output;
 }
 
+/**
+ * Generate Butterworth highpass filter coefficients
+ * 
+ * @param coeffs Output coefficient structure
+ * @param sample_rate Sample rate in Hz
+ * @param cutoff_freq Cutoff frequency in Hz
+ * @param order Filter order (1 or 2)
+ */
+void biquad_highpass(BiquadCoeffs *coeffs, LADSPA_Data sample_rate, 
+                     LADSPA_Data cutoff_freq, int order);
+
+/**
+ * Generate Butterworth lowpass filter coefficients
+ * 
+ * @param coeffs Output coefficient structure
+ * @param sample_rate Sample rate in Hz
+ * @param cutoff_freq Cutoff frequency in Hz
+ * @param order Filter order (1 or 2)
+ */
+void biquad_lowpass(BiquadCoeffs *coeffs, LADSPA_Data sample_rate,
+                    LADSPA_Data cutoff_freq, int order);
+
 #endif // BIQUAD_H
