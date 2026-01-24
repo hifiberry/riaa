@@ -36,6 +36,16 @@ All parameters after the plugin name are passed to the LADSPA plugin. If an argu
 4. **Store settings** (control, 0 to 1, integer, default: 0)
    - Set to 1 to save current parameters to config file
 
+### Output Ports
+
+5. **Clipped Samples** (output, control)
+   - Number of samples that exceeded ±1.0 range (clipping detection)
+
+6. **Detected Clicks** (output, control)
+   - Number of clicks detected using MAD (Median Absolute Deviation) algorithm
+   - Includes high-pass filtering and statistical analysis
+   - Useful for monitoring vinyl record condition
+
 ### Examples
 
 **No subsonic filter, 0dB gain:**
