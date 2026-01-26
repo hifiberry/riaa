@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include <ladspa.h>
 #include "dsp/biquad.h"
 #include "dsp/riaa_coeffs.h"
@@ -31,10 +32,12 @@
 #define RIAA_SPIKE_WIDTH          6
 #define RIAA_CLIPPED_SAMPLES      7
 #define RIAA_DETECTED_CLICKS      8
-#define RIAA_INPUT_L              9
-#define RIAA_INPUT_R              10
-#define RIAA_OUTPUT_L             11
-#define RIAA_OUTPUT_R             12
+#define RIAA_AVG_SPIKE_LENGTH     9
+#define RIAA_AVG_RMS_DB          10
+#define RIAA_INPUT_L             11
+#define RIAA_INPUT_R             12
+#define RIAA_OUTPUT_L            13
+#define RIAA_OUTPUT_R            14
 
 typedef struct {
     LADSPA_Data *gain;
@@ -46,6 +49,8 @@ typedef struct {
     LADSPA_Data *spike_width;
     LADSPA_Data *clipped_samples;
     LADSPA_Data *detected_clicks;
+    LADSPA_Data *avg_spike_length;
+    LADSPA_Data *avg_rms_db;
     LADSPA_Data *input_l;
     LADSPA_Data *input_r;
     LADSPA_Data *output_l;
@@ -58,6 +63,11 @@ typedef struct {
     
     // Declick configuration
     DeclickConfig declick_config;
+    
+    // Accumulated declick statistics
+    double total_spike_length_sum;
+    double total_log_rms_sum;
+    int total_rms_samples;
     
     // Default values from config file
     LADSPA_Data default_gain;
@@ -85,6 +95,11 @@ static LADSPA_Handle instantiate_RIAA(
         declick_config_init(&plugin->declick_config);
         plugin->declick_config.threshold = 150;  // Default spike threshold
         plugin->declick_config.click_width_ms = 1.0f;  // Default 1ms
+        
+        // Initialize accumulated statistics
+        plugin->total_spike_length_sum = 0.0;
+        plugin->total_log_rms_sum = 0.0;
+        plugin->total_rms_samples = 0;
         
         // Load configuration from ~/.config/ladspa/riaa.ini
         PluginConfig config;
@@ -156,6 +171,12 @@ static void connect_port_RIAA(
         case RIAA_DETECTED_CLICKS:
             plugin->detected_clicks = data;
             break;
+        case RIAA_AVG_SPIKE_LENGTH:
+            plugin->avg_spike_length = data;
+            break;
+        case RIAA_AVG_RMS_DB:
+            plugin->avg_rms_db = data;
+            break;
         case RIAA_INPUT_L:
             plugin->input_l = data;
             break;
@@ -192,6 +213,11 @@ static void activate_RIAA(LADSPA_Handle instance) {
     // Reset counters
     counter_reset(&plugin->clip_counter);
     counter_reset(&plugin->click_counter);
+    
+    // Reset statistics accumulators
+    plugin->total_spike_length_sum = 0.0;
+    plugin->total_log_rms_sum = 0.0;
+    plugin->total_rms_samples = 0;
 }
 
 static void run_RIAA(
@@ -218,11 +244,37 @@ static void run_RIAA(
     memcpy(output_r, input_r, sample_count * sizeof(LADSPA_Data));
     
     // Apply declick if enabled (process before RIAA)
+    DeclickStats stats_l = {0};
+    DeclickStats stats_r = {0};
+    
     if (declick_enable && sample_count >= 4096) {
-        int clicks_l = declick_process(output_l, sample_count, &plugin->declick_config, plugin->sample_rate);
-        int clicks_r = declick_process(output_r, sample_count, &plugin->declick_config, plugin->sample_rate);
+        int clicks_l = declick_process(output_l, sample_count, &plugin->declick_config, plugin->sample_rate, &stats_l);
+        int clicks_r = declick_process(output_r, sample_count, &plugin->declick_config, plugin->sample_rate, &stats_r);
+        
+        // Accumulate click counts
         for (int c = 0; c < clicks_l + clicks_r; c++) {
             counter_increment(&plugin->click_counter);
+        }
+        
+        // Accumulate statistics from both channels
+        if (stats_l.click_count > 0) {
+            plugin->total_spike_length_sum += stats_l.avg_spike_length * stats_l.click_count;
+        }
+        if (stats_r.click_count > 0) {
+            plugin->total_spike_length_sum += stats_r.avg_spike_length * stats_r.click_count;
+        }
+        
+        // Accumulate spike-to-background ratio (already in dB as power ratio)
+        // Convert from dB to linear, accumulate, then convert back
+        if (stats_l.avg_rms_db > 0.0) {
+            double linear_ratio = pow(10.0, stats_l.avg_rms_db / 10.0);  // 10*log10 for power
+            plugin->total_log_rms_sum += linear_ratio;
+            plugin->total_rms_samples++;
+        }
+        if (stats_r.avg_rms_db > 0.0) {
+            double linear_ratio = pow(10.0, stats_r.avg_rms_db / 10.0);
+            plugin->total_log_rms_sum += linear_ratio;
+            plugin->total_rms_samples++;
         }
     }
     
@@ -253,6 +305,25 @@ static void run_RIAA(
     }
     if (plugin->detected_clicks) {
         *(plugin->detected_clicks) = (LADSPA_Data)counter_get(&plugin->click_counter);
+    }
+    
+    // Update statistics output ports
+    unsigned long total_clicks = counter_get(&plugin->click_counter);
+    if (plugin->avg_spike_length) {
+        if (total_clicks > 0) {
+            *(plugin->avg_spike_length) = (LADSPA_Data)(plugin->total_spike_length_sum / total_clicks);
+        } else {
+            *(plugin->avg_spike_length) = 0.0f;
+        }
+    }
+    if (plugin->avg_rms_db) {
+        if (plugin->total_rms_samples > 0) {
+            // Average the linear ratios, then convert back to dB
+            double avg_ratio_linear = plugin->total_log_rms_sum / plugin->total_rms_samples;
+            *(plugin->avg_rms_db) = (LADSPA_Data)(10.0 * log10(avg_ratio_linear));  // 10*log10 for power ratio
+        } else {
+            *(plugin->avg_rms_db) = 0.0f;
+        }
     }
     
     // Check if settings should be stored
@@ -306,10 +377,10 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
             g_riaa_descriptor->Name = strdup("RIAA Equalization with Subsonic Filter (Stereo)");
             g_riaa_descriptor->Maker = strdup("HiFiBerry");
             g_riaa_descriptor->Copyright = strdup("MIT");
-            g_riaa_descriptor->PortCount = 13;
+            g_riaa_descriptor->PortCount = 15;
             
             LADSPA_PortDescriptor *port_descriptors = 
-                (LADSPA_PortDescriptor *)calloc(13, sizeof(LADSPA_PortDescriptor));
+                (LADSPA_PortDescriptor *)calloc(15, sizeof(LADSPA_PortDescriptor));
             port_descriptors[RIAA_GAIN] = 
                 LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL;
             port_descriptors[RIAA_SUBSONIC_SEL] = 
@@ -338,16 +409,18 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
                 LADSPA_PORT_OUTPUT | LADSPA_PORT_AUDIO;
             g_riaa_descriptor->PortDescriptors = port_descriptors;
             
-            const char **port_names = (const char **)calloc(13, sizeof(char *));
+            const char **port_names = (const char **)calloc(15, sizeof(char *));
             port_names[RIAA_GAIN] = strdup(RIAA_PORT_NAME_GAIN);
             port_names[RIAA_SUBSONIC_SEL] = strdup(RIAA_PORT_NAME_SUBSONIC_FILTER);
             port_names[RIAA_ENABLE] = strdup(RIAA_PORT_NAME_ENABLE);
             port_names[RIAA_STORE_SETTINGS] = strdup(PORT_NAME_STORE_SETTINGS);
             port_names[RIAA_DECLICK_ENABLE] = strdup("Declick Enable");
-            port_names[RIAA_SPIKE_THRESHOLD] = strdup("Spike RMS Threshold");
+            port_names[RIAA_SPIKE_THRESHOLD] = strdup("Spike Threshold (dB)");
             port_names[RIAA_SPIKE_WIDTH] = strdup("Spike Width (ms)");
             port_names[RIAA_CLIPPED_SAMPLES] = strdup(PORT_NAME_CLIPPED_SAMPLES);
             port_names[RIAA_DETECTED_CLICKS] = strdup("Detected Clicks");
+            port_names[RIAA_AVG_SPIKE_LENGTH] = strdup("Average Spike Length (samples)");
+            port_names[RIAA_AVG_RMS_DB] = strdup("Average Spike Ratio (dB)");
             port_names[RIAA_INPUT_L] = strdup(PORT_NAME_INPUT_L);
             port_names[RIAA_INPUT_R] = strdup(PORT_NAME_INPUT_R);
             port_names[RIAA_OUTPUT_L] = strdup(PORT_NAME_OUTPUT_L);
@@ -355,7 +428,7 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
             g_riaa_descriptor->PortNames = port_names;
             
             LADSPA_PortRangeHint *port_range_hints = 
-                (LADSPA_PortRangeHint *)calloc(13, sizeof(LADSPA_PortRangeHint));
+                (LADSPA_PortRangeHint *)calloc(15, sizeof(LADSPA_PortRangeHint));
             
             // Gain: -40.0 to +40.0 dB, default 0 dB (unity)
             port_range_hints[RIAA_GAIN].HintDescriptor = 
@@ -404,14 +477,13 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
             port_range_hints[RIAA_DECLICK_ENABLE].LowerBound = 0.0f;
             port_range_hints[RIAA_DECLICK_ENABLE].UpperBound = 1.0f;
             
-            // Spike RMS Threshold: 1 to 900, default = 150
+            // Spike Threshold: 0 to 40 dB, default = 15 dB
             port_range_hints[RIAA_SPIKE_THRESHOLD].HintDescriptor = 
                 LADSPA_HINT_BOUNDED_BELOW | 
                 LADSPA_HINT_BOUNDED_ABOVE |
-                LADSPA_HINT_INTEGER |
                 LADSPA_HINT_DEFAULT_MIDDLE;
-            port_range_hints[RIAA_SPIKE_THRESHOLD].LowerBound = 1.0f;
-            port_range_hints[RIAA_SPIKE_THRESHOLD].UpperBound = 900.0f;
+            port_range_hints[RIAA_SPIKE_THRESHOLD].LowerBound = 0.0f;
+            port_range_hints[RIAA_SPIKE_THRESHOLD].UpperBound = 40.0f;
             
             // Spike Width: 0.1 to 10.0 ms, default = 1.0 ms
             port_range_hints[RIAA_SPIKE_WIDTH].HintDescriptor = 
@@ -421,8 +493,17 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
             port_range_hints[RIAA_SPIKE_WIDTH].LowerBound = 0.1f;
             port_range_hints[RIAA_SPIKE_WIDTH].UpperBound = 10.0f;
             
-            port_range_hints[RIAA_DETECTED_CLICKS].HintDescriptor = 0;
+            // Clipped Samples: read-only output
             port_range_hints[RIAA_CLIPPED_SAMPLES].HintDescriptor = 0;
+            
+            // Detected Clicks: read-only output
+            port_range_hints[RIAA_DETECTED_CLICKS].HintDescriptor = 0;
+            
+            // Average Spike Length: read-only output (samples)
+            port_range_hints[RIAA_AVG_SPIKE_LENGTH].HintDescriptor = 0;
+            
+            // Average Spike Ratio: read-only output (dB) - how much spikes exceed background
+            port_range_hints[RIAA_AVG_RMS_DB].HintDescriptor = 0;
             
             port_range_hints[RIAA_INPUT_L].HintDescriptor = 0;
             port_range_hints[RIAA_INPUT_R].HintDescriptor = 0;

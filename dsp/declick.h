@@ -19,6 +19,18 @@ typedef struct {
     float click_width_ms;  // Maximum click width in milliseconds (default: 0.5ms)
 } DeclickConfig;
 
+// Statistics from declick processing
+typedef struct {
+    int click_count;           // Number of clicks detected
+    double avg_spike_length;   // Average spike length in samples
+    double avg_rms_db;         // Average RMS level in dB
+} DeclickStats;
+
+/*
+ * Initialize configuration with default values
+ */
+void declick_config_init(DeclickConfig* config);
+
 /*
  * Remove clicks from an audio buffer
  * 
@@ -27,6 +39,7 @@ typedef struct {
  *   len: Number of samples in buffer (must be >= 4096)
  *   config: Click removal configuration
  *   sample_rate: Sample rate in Hz (e.g., 44100, 48000)
+ *   stats: Optional pointer to receive statistics (can be NULL)
  * 
  * Returns:
  *   Number of clicks detected and removed (0 if none)
@@ -37,11 +50,6 @@ typedef struct {
  *   - Clicks are detected when peak exceeds threshold * RMS
  *   - Detected clicks are replaced with linear interpolation
  */
-int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsigned long sample_rate);
-
-/*
- * Initialize configuration with default values
- */
-void declick_config_init(DeclickConfig* config);
+int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsigned long sample_rate, DeclickStats* stats);
 
 #endif // DECLICK_H

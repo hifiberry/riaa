@@ -28,9 +28,14 @@ void declick_config_init(DeclickConfig* config)
     config->click_width_ms = 0.5f;     // Default 0.5ms (20 samples @ 44.1kHz)
 }
 
-int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsigned long sample_rate)
+int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsigned long sample_rate, DeclickStats* stats)
 {
     if (len < MIN_BUFFER_SIZE || config->threshold == 0 || config->click_width_ms <= 0.0f) {
+        if (stats) {
+            stats->click_count = 0;
+            stats->avg_spike_length = 0.0;
+            stats->avg_rms_db = -100.0;
+        }
         return 0;
     }
 
@@ -46,7 +51,15 @@ int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsi
     int sep = 2049;
     int s2 = sep / 2;
     
-    float threshold_level = (float)config->threshold;
+    // Convert threshold from dB to power multiplier
+    // threshold_db means spike must be 10^(threshold_db/10) times background power
+    float threshold_level = powf(10.0f, (float)config->threshold / 10.0f);
+    
+    // Statistics tracking
+    double sum_spike_lengths = 0.0;
+    double sum_log_spike_ratios = 0.0;  // Track spike-to-background ratio
+    int spike_ratio_count = 0;
+    float max_spike_ratio = 0.0f;  // Track max ratio during current spike
     
     // Allocate working buffers
     float* ms_seq = (float*)malloc(len * sizeof(float));
@@ -100,10 +113,18 @@ int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsi
             msw /= ww;
             
             // Check if this might be a click (narrow peak exceeds threshold)
-            if (msw >= threshold_level * ms_seq[i] / 10.0f) {
+            if (msw >= threshold_level * ms_seq[i]) {
                 if (left == 0) {
                     // Start of potential click
                     left = i + s2;
+                    max_spike_ratio = 0.0f;
+                }
+                // Track maximum spike ratio during the click
+                if (ms_seq[i] > 0.0001f) {
+                    float spike_ratio = msw / ms_seq[i];
+                    if (spike_ratio > max_spike_ratio) {
+                        max_spike_ratio = spike_ratio;
+                    }
                 }
             } else {
                 if (left != 0 && ((int)i - left + s2) <= ww * 2) {
@@ -112,11 +133,20 @@ int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsi
                     float rv = buffer[i + ww + s2];
                     int click_len = i + ww + s2 - left;
                     
+                    // Store the maximum spike ratio we observed
+                    if (max_spike_ratio > 0) {
+                        sum_log_spike_ratios += log(max_spike_ratio);
+                        spike_ratio_count++;
+                    }
+                    
                     for (j = left; j < i + ww + s2; j++) {
                         buffer[j] = (rv * (j - left) + lv * (i + ww + s2 - j)) 
                                     / (float)click_len;
                         b2[j] = buffer[j] * buffer[j];
                     }
+                    
+                    // Track spike length for statistics
+                    sum_spike_lengths += click_len;
                     click_count++;
                     left = 0;
                 } else if (left != 0) {
@@ -124,6 +154,22 @@ int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsi
                     left = 0;
                 }
             }
+        }
+    }
+    
+    // Fill in statistics if requested
+    if (stats) {
+        stats->click_count = click_count;
+        stats->avg_spike_length = (click_count > 0) ? (sum_spike_lengths / click_count) : 0.0;
+        
+        // Convert average log spike ratio back to linear, then to dB
+        // This represents how much louder the spike is compared to the background
+        if (spike_ratio_count > 0) {
+            double avg_log_ratio = sum_log_spike_ratios / spike_ratio_count;
+            double avg_ratio_linear = exp(avg_log_ratio);
+            stats->avg_rms_db = 10.0 * log10(avg_ratio_linear);  // 10*log10 for power ratio
+        } else {
+            stats->avg_rms_db = 0.0;
         }
     }
     
