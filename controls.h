@@ -10,7 +10,6 @@
 // Generic control port names
 #define PORT_NAME_STORE_SETTINGS  "Store settings"
 #define PORT_NAME_CLIPPED_SAMPLES "Clipped Samples"
-#define PORT_NAME_DETECTED_CLICKS "Detected Clicks"
 #define PORT_NAME_INPUT_L         "Input L"
 #define PORT_NAME_INPUT_R         "Input R"
 #define PORT_NAME_OUTPUT_L        "Output L"

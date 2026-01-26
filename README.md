@@ -9,7 +9,6 @@ Phono preamp equalization for vinyl playback (stereo) with optional subsonic fil
 - **RIAA Equalization**: Accurate RIAA curve implementation for vinyl playback
 - **Subsonic Filter**: Optional 1st or 2nd order highpass filter at 20Hz
 - **Gain Control**: Adjustable gain from -40dB to +40dB
-- **Click Detection**: Real-time click detection using MAD (Median Absolute Deviation) algorithm
 - **Configuration File Support**: Save and load default settings
 - **Clipping Detection**: Monitors and counts clipped samples
 - **Multiple Sample Rates**: 44.1, 48, 88.2, 96, 176.4, 192 kHz
@@ -18,7 +17,7 @@ Phono preamp equalization for vinyl playback (stereo) with optional subsonic fil
 
 - **Plugin ID**: 6839
 - **Label**: `riaa`
-- **Ports**: 4 control inputs, 2 control outputs, 2 audio inputs, 2 audio outputs
+- **Ports**: 4 control inputs, 1 control output, 2 audio inputs, 2 audio outputs
 
 ### Parameters
 
@@ -30,7 +29,6 @@ Phono preamp equalization for vinyl playback (stereo) with optional subsonic fil
 ### Output Ports
 
 - **Clipped Samples**: Total count of clipped samples (exceeding ±1.0)
-- **Detected Clicks**: Total count of vinyl clicks/pops detected
 
 ## Prerequisites
 
