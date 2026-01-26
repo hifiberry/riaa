@@ -88,7 +88,7 @@ analyseplugin /usr/local/lib/ladspa/riaa.so
 ./test-plugin.py riaa 0 2 1    # With 2nd order subsonic, 0dB gain
 ```
 
-See [EXAMPLES.md](EXAMPLES.md) for detailed usage examples.
+See [TEST-PLUGIN.md](TEST-PLUGIN.md) for detailed testing examples.
 
 ## Usage Examples
 
@@ -101,6 +101,54 @@ sox input.wav output.wav ladspa /usr/local/lib/ladspa/riaa.so riaa 0 0 1
 
 # With gain adjustment and 2nd order subsonic filter
 sox vinyl.wav processed.wav ladspa /usr/local/lib/ladspa/riaa.so riaa 6.0 2 1
+```
+
+### Ecasound
+
+Ecasound is a powerful command-line audio processing tool that supports LADSPA plugins.
+
+**Basic RIAA processing:**
+```bash
+# Process a file with default settings
+# Syntax: -el:plugin_label,param1,param2,param3
+ecasound -i input.wav -o output.wav -el:riaa,0,0,1
+
+# With 6dB gain and 2nd order subsonic filter
+ecasound -i vinyl.wav -o processed.wav -el:riaa,6.0,2,1
+```
+
+**Real-time processing:**
+```bash
+# Process from input device to output device
+ecasound -i alsa,default -o alsa,default -el:riaa,0,2,1
+
+# With specific ALSA devices
+ecasound -i alsa,hw:1,0 -o alsa,hw:0,0 -el:riaa,6.0,2,1
+```
+
+**Chain multiple effects:**
+```bash
+# RIAA followed by normalization
+ecasound -i input.wav -o output.wav \
+  -el:riaa,0,2,1 \
+  -eadb:-3
+
+# RIAA with additional EQ
+ecasound -i input.wav -o output.wav \
+  -el:riaa,6.0,2,1 \
+  -eli:150,1,0.5
+```
+
+**Syntax explanation:**
+- `-el:riaa,param1,param2,param3`
+  - `riaa`: Plugin label
+  - `param1`: Gain (dB), range: -40.0 to +40.0
+  - `param2`: Subsonic Filter (0=off, 1=1st order, 2=2nd order)
+  - `param3`: RIAA Enable (0=bypass, 1=enabled)
+
+**Note:** For Ecasound to find the plugin, ensure it's installed in a standard LADSPA path or set the `LADSPA_PATH` environment variable:
+```bash
+export LADSPA_PATH=/usr/local/lib/ladspa:$LADSPA_PATH
 ```
 
 ### PipeWire Integration
@@ -138,22 +186,11 @@ context.modules = [
 
 Load the plugin by label `riaa` from the LADSPA effects menu.
 
-See [EXAMPLES.md](EXAMPLES.md) for more detailed usage examples and PipeWire runtime parameter adjustment.
-
-## Project Structure
-
-- `riaa.h`, `riaa.c` - RIAA equalization plugin implementation
-- `biquad.h` - Biquad filter structures and processing
-- `decibel.h`, `decibel.c` - Decibel/voltage conversion utilities
-- `counter.h`, `counter.c` - 64-bit counter for clipping detection
-- `configfile.h`, `configfile.c` - Configuration file support (INI format)
-- `ini.h`, `ini.c` - INI file parser (inih library)
-- `samplerate.h` - Sample rate definitions and utilities
-- `test-plugin.py` - Frequency response testing script
+See [TEST-PLUGIN.md](TEST-PLUGIN.md) for detailed testing examples and frequency response testing.
 
 ## License
 
-MIT License - See individual files for copyright information.
+MIT License - See [LICENSE](LICENSE) file for details.
 
 **Maker**: HiFiBerry
 
