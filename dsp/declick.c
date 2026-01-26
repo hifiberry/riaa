@@ -53,7 +53,11 @@ int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsi
     
     // Convert threshold from dB to power multiplier
     // threshold_db means spike must be 10^(threshold_db/10) times background power
-    float threshold_level = powf(10.0f, (float)config->threshold / 10.0f);
+    // Clamp to reasonable range to prevent overflow
+    int threshold_db = config->threshold;
+    if (threshold_db < 0) threshold_db = 0;
+    if (threshold_db > 40) threshold_db = 40;
+    float threshold_level = powf(10.0f, (float)threshold_db / 10.0f);
     
     // Statistics tracking
     double sum_spike_lengths = 0.0;
@@ -152,6 +156,7 @@ int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsi
                 } else if (left != 0) {
                     // False alarm - reset
                     left = 0;
+                    max_spike_ratio = 0.0f;
                 }
             }
         }

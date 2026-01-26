@@ -26,18 +26,18 @@
 #define RIAA_GAIN                 0
 #define RIAA_SUBSONIC_SEL         1
 #define RIAA_ENABLE               2
-#define RIAA_STORE_SETTINGS       3
-#define RIAA_DECLICK_ENABLE       4
-#define RIAA_SPIKE_THRESHOLD      5
-#define RIAA_SPIKE_WIDTH          6
-#define RIAA_CLIPPED_SAMPLES      7
-#define RIAA_DETECTED_CLICKS      8
-#define RIAA_AVG_SPIKE_LENGTH     9
-#define RIAA_AVG_RMS_DB          10
-#define RIAA_INPUT_L             11
-#define RIAA_INPUT_R             12
-#define RIAA_OUTPUT_L            13
-#define RIAA_OUTPUT_R            14
+#define RIAA_DECLICK_ENABLE       3
+#define RIAA_SPIKE_THRESHOLD      4
+#define RIAA_SPIKE_WIDTH          5
+#define RIAA_CLIPPED_SAMPLES      6
+#define RIAA_DETECTED_CLICKS      7
+#define RIAA_AVG_SPIKE_LENGTH     8
+#define RIAA_AVG_RMS_DB           9
+#define RIAA_INPUT_L             10
+#define RIAA_INPUT_R             11
+#define RIAA_OUTPUT_L            12
+#define RIAA_OUTPUT_R            13
+#define RIAA_STORE_SETTINGS      14
 
 typedef struct {
     LADSPA_Data *gain;
@@ -229,15 +229,21 @@ static void run_RIAA(
     LADSPA_Data *input_r = plugin->input_r;
     LADSPA_Data *output_l = plugin->output_l;
     LADSPA_Data *output_r = plugin->output_r;
-    LADSPA_Data gain_db = *(plugin->gain);
+    
+    // Safely read control ports with NULL checks and defaults
+    LADSPA_Data gain_db = plugin->gain ? *(plugin->gain) : plugin->default_gain;
     LADSPA_Data gain = db_to_voltage(gain_db);
-    int subsonic_sel = (int)(*(plugin->subsonic_sel) + 0.5f);  // Round to nearest int
-    int riaa_enable = (int)(*(plugin->riaa_enable) + 0.5f);  // Round to nearest int
-    int declick_enable = (int)(*(plugin->declick_enable) + 0.5f);  // Round to nearest int
+    int subsonic_sel = plugin->subsonic_sel ? (int)(*(plugin->subsonic_sel) + 0.5f) : (int)plugin->default_subsonic_sel;
+    int riaa_enable = plugin->riaa_enable ? (int)(*(plugin->riaa_enable) + 0.5f) : (int)plugin->default_riaa_enable;
+    int declick_enable = plugin->declick_enable ? (int)(*(plugin->declick_enable) + 0.5f) : 0;
     
     // Update declick configuration from control ports
-    plugin->declick_config.threshold = (int)(*(plugin->spike_threshold) + 0.5f);
-    plugin->declick_config.click_width_ms = *(plugin->spike_width);
+    if (plugin->spike_threshold) {
+        plugin->declick_config.threshold = (int)(*(plugin->spike_threshold) + 0.5f);
+    }
+    if (plugin->spike_width) {
+        plugin->declick_config.click_width_ms = *(plugin->spike_width);
+    }
     
     // Copy input to output buffers first
     memcpy(output_l, input_l, sample_count * sizeof(LADSPA_Data));
@@ -398,6 +404,10 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
             port_descriptors[RIAA_CLIPPED_SAMPLES] = 
                 LADSPA_PORT_OUTPUT | LADSPA_PORT_CONTROL;
             port_descriptors[RIAA_DETECTED_CLICKS] = 
+                LADSPA_PORT_OUTPUT | LADSPA_PORT_CONTROL;
+            port_descriptors[RIAA_AVG_SPIKE_LENGTH] = 
+                LADSPA_PORT_OUTPUT | LADSPA_PORT_CONTROL;
+            port_descriptors[RIAA_AVG_RMS_DB] = 
                 LADSPA_PORT_OUTPUT | LADSPA_PORT_CONTROL;
             port_descriptors[RIAA_INPUT_L] = 
                 LADSPA_PORT_INPUT | LADSPA_PORT_AUDIO;

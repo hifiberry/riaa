@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "  subsonic: 0 (off)\n");
         fprintf(stderr, "  riaa_enable: 1 (on)\n");
         fprintf(stderr, "  declick_enable: 0 (off)\n");
-        fprintf(stderr, "  spike_threshold: 150\n");
+        fprintf(stderr, "  spike_threshold: 15.0 dB\n");
         fprintf(stderr, "  spike_width: 1.0 ms\n");
         return 1;
     }
@@ -38,6 +38,8 @@ int main(int argc, char *argv[]) {
     // Output control ports
     float clipped_samples = 0.0f;
     float detected_clicks = 0.0f;
+    float avg_spike_length = 0.0f;
+    float avg_rms_db = 0.0f;
     
     // Open input file
     SF_INFO sf_info_in;
@@ -125,16 +127,18 @@ int main(int argc, char *argv[]) {
     descriptor->connect_port(handle, 0, &gain);                 // Gain
     descriptor->connect_port(handle, 1, &subsonic);             // Subsonic Filter
     descriptor->connect_port(handle, 2, &riaa_enable);          // RIAA Enable
-    descriptor->connect_port(handle, 3, &store_settings);       // Store settings
-    descriptor->connect_port(handle, 4, &declick_enable);       // Declick Enable
-    descriptor->connect_port(handle, 5, &spike_threshold);      // Spike Threshold
-    descriptor->connect_port(handle, 6, &spike_width);          // Spike Width
-    descriptor->connect_port(handle, 7, &clipped_samples);      // Clipped Samples (output)
-    descriptor->connect_port(handle, 8, &detected_clicks);      // Detected Clicks (output)
-    descriptor->connect_port(handle, 9, input_l);               // Input L
-    descriptor->connect_port(handle, 10, input_r);              // Input R
-    descriptor->connect_port(handle, 11, output_l);             // Output L
-    descriptor->connect_port(handle, 12, output_r);             // Output R
+    descriptor->connect_port(handle, 3, &declick_enable);       // Declick Enable
+    descriptor->connect_port(handle, 4, &spike_threshold);      // Spike Threshold
+    descriptor->connect_port(handle, 5, &spike_width);          // Spike Width
+    descriptor->connect_port(handle, 6, &clipped_samples);      // Clipped Samples (output)
+    descriptor->connect_port(handle, 7, &detected_clicks);      // Detected Clicks (output)
+    descriptor->connect_port(handle, 8, &avg_spike_length);     // Average Spike Length (output)
+    descriptor->connect_port(handle, 9, &avg_rms_db);           // Average RMS dB (output)
+    descriptor->connect_port(handle, 10, input_l);              // Input L
+    descriptor->connect_port(handle, 11, input_r);              // Input R
+    descriptor->connect_port(handle, 12, output_l);             // Output L
+    descriptor->connect_port(handle, 13, output_r);             // Output R
+    descriptor->connect_port(handle, 14, &store_settings);      // Store settings
     
     // Activate plugin
     if (descriptor->activate) {
@@ -183,6 +187,10 @@ int main(int argc, char *argv[]) {
     printf("Results:\n");
     printf("  Clipped samples: %.0f\n", clipped_samples);
     printf("  Detected clicks: %.0f\n", detected_clicks);
+    if (declick_enable && detected_clicks > 0) {
+        printf("  Average spike length: %.1f samples\n", avg_spike_length);
+        printf("  Average spike/background ratio: %.1f dB\n", avg_rms_db);
+    }
     printf("\n");
     printf("Output: %s\n", argv[2]);
     
