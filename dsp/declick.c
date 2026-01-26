@@ -28,10 +28,10 @@ void declick_config_init(DeclickConfig* config)
     config->click_width_ms = 0.5f;     // Default 0.5ms (20 samples @ 44.1kHz)
 }
 
-bool declick_process(float* buffer, size_t len, const DeclickConfig* config, unsigned long sample_rate)
+int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsigned long sample_rate)
 {
     if (len < MIN_BUFFER_SIZE || config->threshold == 0 || config->click_width_ms <= 0.0f) {
-        return false;
+        return 0;
     }
 
     // Convert click width from milliseconds to samples
@@ -40,7 +40,7 @@ bool declick_process(float* buffer, size_t len, const DeclickConfig* config, uns
         click_width = 1;
     }
 
-    bool result = false;
+    int click_count = 0;
     size_t i, j;
     int left = 0;
     int sep = 2049;
@@ -113,11 +113,11 @@ bool declick_process(float* buffer, size_t len, const DeclickConfig* config, uns
                     int click_len = i + ww + s2 - left;
                     
                     for (j = left; j < i + ww + s2; j++) {
-                        result = true;
                         buffer[j] = (rv * (j - left) + lv * (i + ww + s2 - j)) 
                                     / (float)click_len;
                         b2[j] = buffer[j] * buffer[j];
                     }
+                    click_count++;
                     left = 0;
                 } else if (left != 0) {
                     // False alarm - reset
@@ -130,5 +130,5 @@ bool declick_process(float* buffer, size_t len, const DeclickConfig* config, uns
     free(ms_seq);
     free(b2);
     
-    return result;
+    return click_count;
 }

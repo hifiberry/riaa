@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -O3 -fPIC
+CFLAGS = -Wall -O3 -fPIC -Idsp -Iutils
 LDFLAGS = -shared
 
 # Plugin names
@@ -9,29 +9,45 @@ PRODUCTION = riaa
 # Installation directory (standard LADSPA plugin directory)
 INSTALL_DIR = /usr/local/lib/ladspa
 
-all: $(addsuffix .so,$(PLUGINS))
+all: $(addsuffix .so,$(PLUGINS)) riaa_process
 
-riaa.so: riaa.o decibel.o counter.o ini.o configfile.o biquad.o
+riaa.so: riaa_ladspa.o dsp/decibel.o utils/counter.o utils/ini.o utils/configfile.o dsp/biquad.o dsp/declick.o dsp/riaa_calc.o
 	$(CC) $(LDFLAGS) -o $@ $^ -lm
+
+riaa_process: riaa_process.o
+	$(CC) -o $@ $^ -lsndfile -ldl
+
+riaa_process.o: riaa_process.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+dsp/%.o: dsp/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+utils/%.o: utils/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 # Header dependencies
-riaa.o: riaa.c biquad.h riaa.h samplerate.h decibel.h counter.h configfile.h
+riaa_ladspa.o: riaa_ladspa.c riaa_ladspa.h dsp/biquad.h dsp/riaa_coeffs.h dsp/riaa_calc.h dsp/samplerate.h dsp/decibel.h utils/counter.h utils/configfile.h dsp/declick.h utils/controls.h
 
-decibel.o: decibel.c decibel.h
+dsp/decibel.o: dsp/decibel.c dsp/decibel.h
 
-counter.o: counter.c counter.h
+utils/counter.o: utils/counter.c utils/counter.h
 
-biquad.o: biquad.c biquad.h
+dsp/biquad.o: dsp/biquad.c dsp/biquad.h
 
-ini.o: ini.c ini.h
+dsp/declick.o: dsp/declick.c dsp/declick.h
 
-configfile.o: configfile.c configfile.h ini.h
+dsp/riaa_calc.o: dsp/riaa_calc.c dsp/riaa_calc.h dsp/biquad.h dsp/riaa_coeffs.h
+
+utils/ini.o: utils/ini.c utils/ini.h
+
+utils/configfile.o: utils/configfile.c utils/configfile.h utils/ini.h
 
 clean:
-	rm -f *.o *.so
+	rm -f *.o dsp/*.o utils/*.o *.so
 
 install: riaa.so
 	mkdir -p $(INSTALL_DIR)

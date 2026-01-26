@@ -9,6 +9,7 @@ Phono preamp equalization for vinyl playback (stereo) with optional subsonic fil
 - **RIAA Equalization**: Accurate RIAA curve implementation for vinyl playback
 - **Subsonic Filter**: Optional 1st or 2nd order highpass filter at 20Hz
 - **Gain Control**: Adjustable gain from -40dB to +40dB
+- **Declick**: Optional click/pop removal inspired by Audacity's algorithm
 - **Configuration File Support**: Save and load default settings
 - **Clipping Detection**: Monitors and counts clipped samples
 - **Multiple Sample Rates**: 44.1, 48, 88.2, 96, 176.4, 192 kHz
@@ -17,7 +18,7 @@ Phono preamp equalization for vinyl playback (stereo) with optional subsonic fil
 
 - **Plugin ID**: 6839
 - **Label**: `riaa`
-- **Ports**: 4 control inputs, 1 control output, 2 audio inputs, 2 audio outputs
+- **Ports**: 7 control inputs, 2 control outputs, 2 audio inputs, 2 audio outputs
 
 ### Parameters
 
@@ -25,10 +26,14 @@ Phono preamp equalization for vinyl playback (stereo) with optional subsonic fil
 - **Subsonic Filter**: 0 = off, 1 = 1st order, 2 = 2nd order, default: 0
 - **RIAA Enable**: 0 = bypass, 1 = enabled, default: 1
 - **Store settings**: 0 = no action, 1 = save current settings to config file
+- **Declick Enable**: 0 = off, 1 = on, default: 0
+- **Spike RMS Threshold**: 1 to 900, default: 150
+- **Spike Width (ms)**: 0.1 to 10.0 ms, default: 1.0
 
 ### Output Ports
 
 - **Clipped Samples**: Total count of clipped samples (exceeding ±1.0)
+- **Detected Clicks**: Total count of detected and removed clicks
 
 ## Prerequisites
 
@@ -91,6 +96,66 @@ analyseplugin /usr/local/lib/ladspa/riaa.so
 See [TEST-PLUGIN.md](TEST-PLUGIN.md) for detailed testing examples.
 
 ## Usage Examples
+
+### Command-Line Utility
+
+The `riaa_process` utility provides a convenient way to process audio files and see the output statistics (clipped samples and detected clicks):
+
+```bash
+# Basic usage with default settings (0dB gain, no subsonic, RIAA enabled, declick off)
+./riaa_process input.wav output.wav
+
+# With custom parameters
+./riaa_process input.wav output.wav [gain] [subsonic] [riaa_enable] [declick_enable] [spike_threshold] [spike_width]
+
+# Examples:
+# Process with 6dB gain and 2nd order subsonic filter
+./riaa_process vinyl.wav processed.wav 6.0 2 1 0
+
+# Process with declick enabled
+./riaa_process noisy.wav clean.wav 0 2 1 1 150 1.0
+```
+
+**Parameters:**
+- `gain`: -40.0 to +40.0 dB (default: 0.0)
+- `subsonic`: 0=off, 1=1st order, 2=2nd order (default: 0)
+- `riaa_enable`: 0=bypass, 1=enabled (default: 1)
+- `declick_enable`: 0=off, 1=on (default: 0)
+- `spike_threshold`: 1 to 900 (default: 150)
+- `spike_width`: 0.1 to 10.0 ms (default: 1.0)
+
+**Output Example:**
+```
+Input: vinyl.wav
+  Sample rate: 44100 Hz
+  Channels: 2
+  Frames: 2205000
+
+Plugin: RIAA Phono Preamp
+Label: riaa
+
+Processing settings:
+  Gain: 6.0 dB
+  Subsonic: 2 (0=off, 1=1st order, 2=2nd order)
+  RIAA: enabled
+  Declick: enabled
+  Spike threshold: 150
+  Spike width: 1.0 ms
+
+Processing...
+Processed 2205000 frames
+
+Results:
+  Clipped samples: 0
+  Detected clicks: 42
+
+Output: processed.wav
+```
+
+**Note:** The utility requires libsndfile for WAV file handling. Install with:
+```bash
+sudo apt install libsndfile1-dev
+```
 
 ### SoX (Sound eXchange)
 

@@ -29,7 +29,7 @@ typedef struct {
  *   sample_rate: Sample rate in Hz (e.g., 44100, 48000)
  * 
  * Returns:
- *   true if any clicks were removed, false otherwise
+ *   Number of clicks detected and removed (0 if none)
  * 
  * Algorithm:
  *   - Identifies clicks as narrow regions of high amplitude compared to surrounding audio
@@ -37,7 +37,7 @@ typedef struct {
  *   - Clicks are detected when peak exceeds threshold * RMS
  *   - Detected clicks are replaced with linear interpolation
  */
-bool declick_process(float* buffer, size_t len, const DeclickConfig* config, unsigned long sample_rate);
+int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsigned long sample_rate);
 
 /*
  * Initialize configuration with default values

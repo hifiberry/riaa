@@ -14,7 +14,7 @@
 #include "dsp/biquad.h"
 #include "dsp/riaa_coeffs.h"
 #include "dsp/riaa_calc.h"
-#include "riaa.h"
+#include "riaa_ladspa.h"
 #include "dsp/decibel.h"
 #include "utils/counter.h"
 #include "utils/configfile.h"
