@@ -123,7 +123,14 @@ int main(int argc, char *argv[]) {
     float *output_r = (float *)malloc(BUFFER_SIZE * sizeof(float));
     float *interleaved = (float *)malloc(BUFFER_SIZE * 2 * sizeof(float));
     
-    // Connect ports (based on port order in riaa_ladspa.c)
+    // Activate plugin first (before connecting control ports)
+    // This allows the plugin to load defaults from config file
+    if (descriptor->activate) {
+        descriptor->activate(handle);
+    }
+    
+    // Connect ports AFTER activation to override config file defaults
+    // (based on port order in riaa_ladspa.c)
     descriptor->connect_port(handle, 0, &gain);                 // Gain
     descriptor->connect_port(handle, 1, &subsonic);             // Subsonic Filter
     descriptor->connect_port(handle, 2, &riaa_enable);          // RIAA Enable
@@ -139,11 +146,6 @@ int main(int argc, char *argv[]) {
     descriptor->connect_port(handle, 12, output_l);             // Output L
     descriptor->connect_port(handle, 13, output_r);             // Output R
     descriptor->connect_port(handle, 14, &store_settings);      // Store settings
-    
-    // Activate plugin
-    if (descriptor->activate) {
-        descriptor->activate(handle);
-    }
     
     printf("Processing settings:\n");
     printf("  Gain: %.1f dB\n", gain);
