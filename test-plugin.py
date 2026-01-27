@@ -67,7 +67,7 @@ Examples:
                           nargs='*',
                           default=[],
                           metavar='VALUE',
-                          help='Plugin parameters (control values)')
+                          help='Plugin parameters (control values). For RIAA: Gain Subsonic RIAA-Enable Declick-Enable Spike-Threshold Spike-Width Store-Settings')
         
         parser.add_argument('--output', '-o',
                           metavar='FILE',
@@ -215,34 +215,62 @@ Examples:
         trim_start = 0.2 * adaptive_duration / self.duration
         trim_len = 0.6 * adaptive_duration / self.duration
         
-        # Create temporary file to store audio output
+        # Create temporary files
         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
-            tmp_file = tmp.name
+            tmp_input = tmp.name
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
+            tmp_output = tmp.name
         
         try:
-            # Build sox command to generate signal and process through plugin
-            cmd = [
-                'sox', '-n', tmp_file,
+            # Generate input signal with sox
+            sox_cmd = [
+                'sox', '-n', tmp_input,
                 'synth', str(adaptive_duration), 'sine', str(frequency),
+                'channels', str(self.num_inputs),
                 'trim', str(trim_start), str(trim_len)
             ]
             
-            # Add channels if multi-input
-            if self.num_inputs > 1:
-                cmd.extend(['channels', str(self.num_inputs)])
-            
-            # Add LADSPA plugin
-            cmd.extend(['ladspa', self.plugin_path, self.plugin_label] + self.parameters)
-            
-            # Run sox to create output file
             result = subprocess.run(
-                cmd,
+                sox_cmd,
                 capture_output=True,
                 text=True
             )
             
             if result.returncode != 0:
                 return None
+            
+            # Process through riaa_process instead of LADSPA
+            # Check if we're testing the riaa plugin
+            if self.plugin_label == 'riaa':
+                # Use riaa_process native tool
+                riaa_cmd = ['./riaa_process', tmp_input, tmp_output] + self.parameters
+                result = subprocess.run(
+                    riaa_cmd,
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode != 0:
+                    return None
+                    
+                tmp_file = tmp_output
+            else:
+                # For other plugins, try using sox LADSPA
+                cmd = [
+                    'sox', tmp_input, tmp_output,
+                    'ladspa', self.plugin_path, self.plugin_label
+                ] + self.parameters
+                
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode != 0:
+                    return None
+                    
+                tmp_file = tmp_output
             
             # Now measure each channel individually
             rms_values = []
@@ -278,11 +306,12 @@ Examples:
             print(f"Warning: Failed to measure at {frequency} Hz: {e}", file=sys.stderr)
             return None
         finally:
-            # Clean up temporary file
-            try:
-                Path(tmp_file).unlink()
-            except:
-                pass
+            # Clean up temporary files
+            for f in [tmp_input, tmp_output]:
+                try:
+                    Path(f).unlink()
+                except:
+                    pass
     
     def rms_to_db(self, rms):
         """
