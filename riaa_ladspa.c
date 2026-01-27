@@ -239,7 +239,16 @@ static void run_RIAA(
     
     // Update declick configuration from control ports
     if (plugin->spike_threshold) {
-        plugin->declick_config.threshold = (int)(*(plugin->spike_threshold) + 0.5f);
+        // Convert from dB (0-40) to raw threshold value (1-900)
+        // threshold = 10^(dB/20) gives voltage ratio
+        // Scale: 0 dB -> 1, 20 dB -> 100, 40 dB -> 900
+        float threshold_db = *(plugin->spike_threshold);
+        float voltage_ratio = powf(10.0f, threshold_db / 20.0f);
+        // Map to declick range: multiply by ~9 to get 0dB->1, 20dB->100, 40dB->900
+        plugin->declick_config.threshold = (int)(voltage_ratio * 9.0f + 0.5f);
+        // Clamp to valid range
+        if (plugin->declick_config.threshold < 1) plugin->declick_config.threshold = 1;
+        if (plugin->declick_config.threshold > 900) plugin->declick_config.threshold = 900;
     }
     if (plugin->spike_width) {
         plugin->declick_config.click_width_ms = *(plugin->spike_width);
@@ -272,13 +281,14 @@ static void run_RIAA(
         
         // Accumulate spike-to-background ratio (already in dB as power ratio)
         // Convert from dB to linear, accumulate, then convert back
-        if (stats_l.avg_rms_db > 0.0) {
-            double linear_ratio = pow(10.0, stats_l.avg_rms_db / 10.0);  // 10*log10 for power
+        // Note: we accumulate even if avg_rms_db is 0.0, as long as clicks were detected
+        if (stats_l.click_count > 0) {
+            double linear_ratio = (stats_l.avg_rms_db > 0.0) ? pow(10.0, stats_l.avg_rms_db / 10.0) : 1.0;
             plugin->total_log_rms_sum += linear_ratio;
             plugin->total_rms_samples++;
         }
-        if (stats_r.avg_rms_db > 0.0) {
-            double linear_ratio = pow(10.0, stats_r.avg_rms_db / 10.0);
+        if (stats_r.click_count > 0) {
+            double linear_ratio = (stats_r.avg_rms_db > 0.0) ? pow(10.0, stats_r.avg_rms_db / 10.0) : 1.0;
             plugin->total_log_rms_sum += linear_ratio;
             plugin->total_rms_samples++;
         }

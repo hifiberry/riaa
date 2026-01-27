@@ -51,13 +51,13 @@ int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsi
     int sep = 2049;
     int s2 = sep / 2;
     
-    // Convert threshold from dB to power multiplier
-    // threshold_db means spike must be 10^(threshold_db/10) times background power
-    // Clamp to reasonable range to prevent overflow
-    int threshold_db = config->threshold;
-    if (threshold_db < 0) threshold_db = 0;
-    if (threshold_db > 40) threshold_db = 40;
-    float threshold_level = powf(10.0f, (float)threshold_db / 10.0f);
+    // Use threshold directly as a multiplier
+    // threshold is already a raw value indicating how many times above background
+    // the spike must be to be considered a click
+    int threshold = config->threshold;
+    if (threshold < 1) threshold = 1;
+    if (threshold > 900) threshold = 900;
+    float threshold_level = (float)threshold;
     
     // Statistics tracking
     double sum_spike_lengths = 0.0;
@@ -124,7 +124,7 @@ int declick_process(float* buffer, size_t len, const DeclickConfig* config, unsi
                     max_spike_ratio = 0.0f;
                 }
                 // Track maximum spike ratio during the click
-                if (ms_seq[i] > 0.0001f) {
+                if (ms_seq[i] > 1e-10f) {  // Very small threshold to avoid division by zero
                     float spike_ratio = msw / ms_seq[i];
                     if (spike_ratio > max_spike_ratio) {
                         max_spike_ratio = spike_ratio;
