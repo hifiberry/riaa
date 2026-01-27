@@ -161,6 +161,7 @@ int main(int argc, char *argv[]) {
     // Process audio
     sf_count_t frames_read;
     sf_count_t total_frames = 0;
+    float previous_clicks = 0.0f;
     
     while ((frames_read = sf_readf_float(sf_in, interleaved, BUFFER_SIZE)) > 0) {
         // Deinterleave
@@ -171,6 +172,15 @@ int main(int argc, char *argv[]) {
         
         // Process
         descriptor->run(handle, frames_read);
+        
+        // Check if new clicks were detected in this buffer
+        if (declick_enable && detected_clicks > previous_clicks) {
+            float new_clicks = detected_clicks - previous_clicks;
+            double time_seconds = (double)total_frames / sf_info_in.samplerate;
+            printf("  Click detected at %.3f seconds (frame %ld, +%.0f clicks)\n", 
+                   time_seconds, (long)total_frames, new_clicks);
+            previous_clicks = detected_clicks;
+        }
         
         // Interleave output
         for (sf_count_t i = 0; i < frames_read; i++) {
