@@ -31,9 +31,4 @@ void calculate_notch_coeffs(BiquadCoeffs *coeffs, float freq, float q, float sam
     coeffs->b2 = b2 / a0;
     coeffs->a1 = -a1 / a0;  // Note: sign negated for our convention
     coeffs->a2 = -a2 / a0;  // Note: sign negated for our convention
-    
-    fprintf(stderr, "Notch filter: freq=%.1f Q=%.1f fs=%.1f\n", freq, q, sample_rate);
-    fprintf(stderr, "  w0=%.6f cos=%.6f sin=%.6f alpha=%.6f\n", w0, cos_w0, sin_w0, alpha);
-    fprintf(stderr, "  b0=%.6f b1=%.6f b2=%.6f\n", coeffs->b0, coeffs->b1, coeffs->b2);
-    fprintf(stderr, "  a1=%.6f a2=%.6f\n", coeffs->a1, coeffs->a2);
 }
