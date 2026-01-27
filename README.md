@@ -94,17 +94,29 @@ sudo apt install ladspa-sdk
 
 ## Building and Installation
 
-**Build the plugin:**
+The project supports both LADSPA and LV2 plugin formats.
+
+**Build all plugins:**
 ```bash
-make
+make all
+```
+
+**Build specific format:**
+```bash
+make ladspa    # Build LADSPA plugin only
+make lv2       # Build LV2 plugin only
 ```
 
 **Install:**
 ```bash
-sudo make install
+sudo make install              # Install both LADSPA and LV2
+sudo make install-ladspa       # Install LADSPA only
+sudo make install-lv2          # Install LV2 only
 ```
 
-The plugin is installed to `/usr/local/lib/ladspa/`.
+**Installation directories:**
+- LADSPA: `/usr/local/lib/ladspa/riaa.so`
+- LV2: `/usr/local/lib/lv2/riaa.lv2/`
 
 ## Configuration
 
