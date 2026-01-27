@@ -9,7 +9,8 @@ Phono preamp equalization for vinyl playback (stereo) with optional subsonic fil
 - **RIAA Equalization**: Accurate RIAA curve implementation for vinyl playback
 - **Subsonic Filter**: Optional 1st or 2nd order highpass filter at 20Hz
 - **Gain Control**: Adjustable gain from -40dB to +40dB
-- **Declick**: Optional click/pop removal inspired by Audacity's algorithm
+- **Declick**: Optional click/pop removal for vinyl recordings (see details below)
+- **Notch Filter**: Optional narrow notch filter for mains hum removal (see warnings below)
 - **Configuration File Support**: Save and load default settings
 - **Clipping Detection**: Monitors and counts clipped samples
 - **Multiple Sample Rates**: 44.1, 48, 88.2, 96, 176.4, 192 kHz
@@ -18,22 +19,69 @@ Phono preamp equalization for vinyl playback (stereo) with optional subsonic fil
 
 - **Plugin ID**: 6839
 - **Label**: `riaa`
-- **Ports**: 7 control inputs, 2 control outputs, 2 audio inputs, 2 audio outputs
+- **Ports**: 10 control inputs, 4 control outputs, 2 audio inputs, 2 audio outputs
 
 ### Parameters
 
 - **Gain (dB)**: -40.0 to +40.0, default: 0.0
 - **Subsonic Filter**: 0 = off, 1 = 1st order, 2 = 2nd order, default: 0
 - **RIAA Enable**: 0 = bypass, 1 = enabled, default: 1
-- **Store settings**: 0 = no action, 1 = save current settings to config file
 - **Declick Enable**: 0 = off, 1 = on, default: 0
-- **Spike RMS Threshold**: 1 to 900, default: 150
-- **Spike Width (ms)**: 0.1 to 10.0 ms, default: 1.0
+- **Spike Threshold (dB)**: 0 to 40 dB, default: 20 dB
+- **Spike Width (ms)**: 0.1 to 10.0 ms, default: 1.0 ms
+- **Notch Filter Enable**: 0 = off, 1 = on, default: 0
+- **Notch Frequency (Hz)**: 20 to 500 Hz, default: 50 Hz
+- **Notch Q Factor**: 0.5 to 50.0, default: 10.0
+- **Store settings**: 0 = no action, 1 = save current settings to config file
 
 ### Output Ports
 
 - **Clipped Samples**: Total count of clipped samples (exceeding ±1.0)
 - **Detected Clicks**: Total count of detected and removed clicks
+- **Average Spike Length**: Average length of detected spikes in samples
+- **Average Spike Ratio**: Average spike-to-background ratio in dB
+
+## Declick Feature
+
+The declick feature removes clicks and pops from vinyl recordings using an algorithm inspired by Audacity's click removal. It works by:
+
+1. Analyzing the audio for sudden spikes that exceed the background level
+2. Detecting clicks based on configurable threshold and width parameters
+3. Replacing detected clicks with interpolated audio
+
+**Parameters:**
+- **Spike Threshold**: Controls sensitivity (0-40 dB). Higher values detect only stronger clicks.
+- **Spike Width**: Maximum click duration to detect (0.1-10 ms). Typical vinyl clicks are 1-2 ms.
+
+**Note:** Declick processing requires a minimum buffer size of 4096 samples. It processes audio before RIAA equalization is applied.
+
+## Notch Filter Feature
+
+The notch filter provides a narrow band-stop filter that can be used to remove mains hum (50Hz or 60Hz) from recordings.
+
+**Parameters:**
+- **Notch Frequency**: Center frequency to attenuate (20-500 Hz)
+- **Notch Q Factor**: Filter bandwidth (0.5-50). Higher Q = narrower notch.
+  - Q=10 (default): ~5 Hz bandwidth, typical for mains hum removal
+  - Q=1: Wider notch, affects more frequencies
+  - Q=50: Very narrow, surgical removal
+
+**IMPORTANT WARNING:**
+
+While the notch filter can remove mains hum, **it is strongly recommended to fix the root cause on the analog side** rather than using digital filtering. Here's why:
+
+- **Signal degradation**: The notch filter will also attenuate legitimate music signals at and near the notch frequency
+- **Phase distortion**: Notch filters introduce phase shifts that affect the entire frequency spectrum, not just the notched frequency
+- **Musical impact**: Even a narrow notch can affect bass fundamentals and harmonics, reducing audio quality
+
+**Better solutions:**
+- Fix grounding issues in your turntable/preamp setup
+- Use shielded cables
+- Ensure proper electrical isolation
+- Check for ground loops
+- Use a quality phono preamp with good power supply filtering
+
+Only use the notch filter as a last resort for already-recorded material where the analog chain cannot be fixed.
 
 ## Prerequisites
 
