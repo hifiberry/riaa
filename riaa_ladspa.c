@@ -459,33 +459,24 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index) {
             
             // RIAA enable: 0 = off, 1 = on, default = 1 (enabled)
             port_range_hints[RIAA_ENABLE].HintDescriptor = 
-                LADSPA_HINT_BOUNDED_BELOW | 
-                LADSPA_HINT_BOUNDED_ABOVE |
-                LADSPA_HINT_INTEGER |
                 LADSPA_HINT_TOGGLED |
                 LADSPA_HINT_DEFAULT_1;
             port_range_hints[RIAA_ENABLE].LowerBound = 0.0f;
-            port_range_hints[RIAA_ENABLE].UpperBound = 1.0f;
+            port_range_hints[RIAA_ENABLE].UpperBound = 0.0f;
             
             // Store settings: 0 = no action, != 0 = save settings, default = 0 (no action)
             port_range_hints[RIAA_STORE_SETTINGS].HintDescriptor = 
-                LADSPA_HINT_BOUNDED_BELOW | 
-                LADSPA_HINT_BOUNDED_ABOVE |
-                LADSPA_HINT_INTEGER |
                 LADSPA_HINT_TOGGLED |
                 LADSPA_HINT_DEFAULT_0;
             port_range_hints[RIAA_STORE_SETTINGS].LowerBound = 0.0f;
-            port_range_hints[RIAA_STORE_SETTINGS].UpperBound = 1.0f;
+            port_range_hints[RIAA_STORE_SETTINGS].UpperBound = 0.0f;
             
             // Declick enable: 0 = off, 1 = on, default = 0 (disabled)
             port_range_hints[RIAA_DECLICK_ENABLE].HintDescriptor = 
-                LADSPA_HINT_BOUNDED_BELOW | 
-                LADSPA_HINT_BOUNDED_ABOVE |
-                LADSPA_HINT_INTEGER |
                 LADSPA_HINT_TOGGLED |
                 LADSPA_HINT_DEFAULT_0;
             port_range_hints[RIAA_DECLICK_ENABLE].LowerBound = 0.0f;
-            port_range_hints[RIAA_DECLICK_ENABLE].UpperBound = 1.0f;
+            port_range_hints[RIAA_DECLICK_ENABLE].UpperBound = 0.0f;
             
             // Spike Threshold: 0 to 40 dB, default = 15 dB
             port_range_hints[RIAA_SPIKE_THRESHOLD].HintDescriptor = 
