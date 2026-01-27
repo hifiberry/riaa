@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "  subsonic: 0 (off)\n");
         fprintf(stderr, "  riaa_enable: 1 (on)\n");
         fprintf(stderr, "  declick_enable: 0 (off)\n");
-        fprintf(stderr, "  spike_threshold: 15.0 dB\n");
+        fprintf(stderr, "  spike_threshold: 20.0 dB\n");
         fprintf(stderr, "  spike_width: 1.0 ms\n");
         return 1;
     }
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     float subsonic = (argc > 4) ? atof(argv[4]) : 0.0f;
     float riaa_enable = (argc > 5) ? atof(argv[5]) : 1.0f;
     float declick_enable = (argc > 6) ? atof(argv[6]) : 0.0f;
-    float spike_threshold = (argc > 7) ? atof(argv[7]) : 150.0f;
+    float spike_threshold = (argc > 7) ? atof(argv[7]) : 20.0f;  // Default 20 dB
     float spike_width = (argc > 8) ? atof(argv[8]) : 1.0f;
     float store_settings = 0.0f;
     
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
     printf("  RIAA: %s\n", riaa_enable ? "enabled" : "disabled");
     printf("  Declick: %s\n", declick_enable ? "enabled" : "disabled");
     if (declick_enable) {
-        printf("  Spike threshold: %.0f\n", spike_threshold);
+        printf("  Spike threshold: %.1f dB\n", spike_threshold);
         printf("  Spike width: %.1f ms\n", spike_width);
     }
     printf("\nProcessing...\n");
