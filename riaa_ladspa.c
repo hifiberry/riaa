@@ -240,6 +240,15 @@ static void activate_RIAA(LADSPA_Handle instance) {
     plugin->total_spike_length_sum = 0.0;
     plugin->total_log_rms_sum = 0.0;
     plugin->total_rms_samples = 0;
+    
+    // Debug: Show initial state
+    int riaa_enable = plugin->riaa_enable ? (int)(*(plugin->riaa_enable) + 0.5f) : (int)plugin->default_riaa_enable;
+    int declick_enable = plugin->declick_enable ? (int)(*(plugin->declick_enable) + 0.5f) : 0;
+    int notch_enable = plugin->notch_enable ? (int)(*(plugin->notch_enable) + 0.5f) : 0;
+    fprintf(stderr, "RIAA: Activated - RIAA:%s Declick:%s Notch:%s\n", 
+            riaa_enable ? "ON" : "OFF",
+            declick_enable ? "ON" : "OFF",
+            notch_enable ? "ON" : "OFF");
 }
 
 static void run_RIAA(
