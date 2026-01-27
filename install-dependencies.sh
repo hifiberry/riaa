@@ -29,6 +29,7 @@ case "$DISTRO" in
             gcc \
             make \
             ladspa-sdk \
+            lv2-dev \
             libsndfile1-dev \
             sox \
             python3 \
@@ -42,6 +43,7 @@ case "$DISTRO" in
             gcc \
             make \
             ladspa-devel \
+            lv2-devel \
             libsndfile-devel \
             sox \
             python3 \
@@ -54,6 +56,7 @@ case "$DISTRO" in
         sudo pacman -Sy --noconfirm \
             base-devel \
             ladspa \
+            lv2 \
             libsndfile \
             sox \
             python \
@@ -67,6 +70,7 @@ case "$DISTRO" in
             gcc \
             make \
             ladspa-devel \
+            lv2-devel \
             libsndfile-devel \
             sox \
             python3 \
@@ -80,6 +84,7 @@ case "$DISTRO" in
         echo "Please install the following packages manually:"
         echo "  - Build tools (gcc, make)"
         echo "  - LADSPA SDK (development headers)"
+        echo "  - LV2 SDK (development headers)"
         echo "  - libsndfile (development headers)"
         echo "  - SoX (Sound eXchange)"
         echo "  - Python 3 with pip"
@@ -89,10 +94,12 @@ case "$DISTRO" in
 esac
 
 echo ""
-echo "✓ Dependencies installed successfully!"
+echo "Dependencies installed successfully!"
 echo ""
 echo "You can now:"
-echo "  1. Build the plugin:    make"
-echo "  2. Install the plugin:  sudo make install"
-echo "  3. Test the plugin:     ./test-plugin.py riaa --params 1 1 0"
+echo "  1. Build the plugins:        make all"
+echo "  2. Build LADSPA only:        make ladspa"
+echo "  3. Build LV2 only:           make lv2"
+echo "  4. Install the plugins:      sudo make install"
+echo "  5. Test the LADSPA plugin:   ./test-plugin.py riaa --params 0 0 1"
 echo ""
