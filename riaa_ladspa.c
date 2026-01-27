@@ -33,15 +33,15 @@
 #define RIAA_NOTCH_ENABLE         6
 #define RIAA_NOTCH_FREQ           7
 #define RIAA_NOTCH_Q              8
-#define RIAA_CLIPPED_SAMPLES      9
-#define RIAA_DETECTED_CLICKS     10
-#define RIAA_AVG_SPIKE_LENGTH    11
-#define RIAA_AVG_RMS_DB          12
-#define RIAA_INPUT_L             13
-#define RIAA_INPUT_R             14
-#define RIAA_OUTPUT_L            15
-#define RIAA_OUTPUT_R            16
-#define RIAA_STORE_SETTINGS      17
+#define RIAA_STORE_SETTINGS       9
+#define RIAA_CLIPPED_SAMPLES     10
+#define RIAA_DETECTED_CLICKS     11
+#define RIAA_AVG_SPIKE_LENGTH    12
+#define RIAA_AVG_RMS_DB          13
+#define RIAA_INPUT_L             14
+#define RIAA_INPUT_R             15
+#define RIAA_OUTPUT_L            16
+#define RIAA_OUTPUT_R            17
 
 typedef struct {
     LADSPA_Data *gain;
@@ -224,16 +224,9 @@ static void connect_port_RIAA(
 static void activate_RIAA(LADSPA_Handle instance) {
     RIAA *plugin = (RIAA *)instance;
     
-    // Apply default values from config to control ports
-    if (plugin->gain) {
-        *(plugin->gain) = plugin->default_gain;
-    }
-    if (plugin->subsonic_sel) {
-        *(plugin->subsonic_sel) = plugin->default_subsonic_sel;
-    }
-    if (plugin->riaa_enable) {
-        *(plugin->riaa_enable) = plugin->default_riaa_enable;
-    }
+    // NOTE: Do NOT write to control ports here!
+    // The host has already set the control port values before calling activate().
+    // Writing to them here would overwrite the host's settings.
     
     // Reset RIAA processing states
     riaa_channel_reset(&plugin->channel_l);
