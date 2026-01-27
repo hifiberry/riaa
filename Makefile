@@ -11,7 +11,7 @@ INSTALL_DIR = /usr/local/lib/ladspa
 
 all: $(addsuffix .so,$(PLUGINS)) riaa_process
 
-riaa.so: riaa_ladspa.o dsp/decibel.o utils/counter.o utils/ini.o utils/configfile.o dsp/biquad.o dsp/declick.o dsp/riaa_calc.o
+riaa.so: riaa_ladspa.o dsp/decibel.o utils/counter.o utils/ini.o utils/configfile.o dsp/biquad.o dsp/declick.o dsp/riaa_calc.o dsp/notch.o
 	$(CC) $(LDFLAGS) -o $@ $^ -lm
 
 riaa_process: riaa_process.o

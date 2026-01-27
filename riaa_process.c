@@ -15,7 +15,7 @@
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        fprintf(stderr, "Usage: %s input.wav output.wav [gain] [subsonic] [riaa_enable] [declick_enable] [spike_threshold] [spike_width]\n", argv[0]);
+        fprintf(stderr, "Usage: %s input.wav output.wav [gain] [subsonic] [riaa_enable] [declick_enable] [spike_threshold] [spike_width] [notch_enable] [notch_freq] [notch_q]\n", argv[0]);
         fprintf(stderr, "\nDefaults:\n");
         fprintf(stderr, "  gain: 0.0 dB\n");
         fprintf(stderr, "  subsonic: 0 (off)\n");
@@ -23,6 +23,9 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "  declick_enable: 0 (off)\n");
         fprintf(stderr, "  spike_threshold: 20.0 dB\n");
         fprintf(stderr, "  spike_width: 1.0 ms\n");
+        fprintf(stderr, "  notch_enable: 0 (off)\n");
+        fprintf(stderr, "  notch_freq: 50.0 Hz\n");
+        fprintf(stderr, "  notch_q: 10.0\n");
         return 1;
     }
     
@@ -33,6 +36,9 @@ int main(int argc, char *argv[]) {
     float declick_enable = (argc > 6) ? atof(argv[6]) : 0.0f;
     float spike_threshold = (argc > 7) ? atof(argv[7]) : 20.0f;  // Default 20 dB
     float spike_width = (argc > 8) ? atof(argv[8]) : 1.0f;
+    float notch_enable = (argc > 9) ? atof(argv[9]) : 0.0f;
+    float notch_freq = (argc > 10) ? atof(argv[10]) : 50.0f;
+    float notch_q = (argc > 11) ? atof(argv[11]) : 10.0f;
     float store_settings = 0.0f;
     
     // Output control ports
@@ -137,15 +143,18 @@ int main(int argc, char *argv[]) {
     descriptor->connect_port(handle, 3, &declick_enable);       // Declick Enable
     descriptor->connect_port(handle, 4, &spike_threshold);      // Spike Threshold
     descriptor->connect_port(handle, 5, &spike_width);          // Spike Width
-    descriptor->connect_port(handle, 6, &clipped_samples);      // Clipped Samples (output)
-    descriptor->connect_port(handle, 7, &detected_clicks);      // Detected Clicks (output)
-    descriptor->connect_port(handle, 8, &avg_spike_length);     // Average Spike Length (output)
-    descriptor->connect_port(handle, 9, &avg_rms_db);           // Average RMS dB (output)
-    descriptor->connect_port(handle, 10, input_l);              // Input L
-    descriptor->connect_port(handle, 11, input_r);              // Input R
-    descriptor->connect_port(handle, 12, output_l);             // Output L
-    descriptor->connect_port(handle, 13, output_r);             // Output R
-    descriptor->connect_port(handle, 14, &store_settings);      // Store settings
+    descriptor->connect_port(handle, 6, &notch_enable);         // Notch Enable
+    descriptor->connect_port(handle, 7, &notch_freq);           // Notch Frequency
+    descriptor->connect_port(handle, 8, &notch_q);              // Notch Q
+    descriptor->connect_port(handle, 9, &clipped_samples);      // Clipped Samples (output)
+    descriptor->connect_port(handle, 10, &detected_clicks);     // Detected Clicks (output)
+    descriptor->connect_port(handle, 11, &avg_spike_length);    // Average Spike Length (output)
+    descriptor->connect_port(handle, 12, &avg_rms_db);          // Average RMS dB (output)
+    descriptor->connect_port(handle, 13, input_l);              // Input L
+    descriptor->connect_port(handle, 14, input_r);              // Input R
+    descriptor->connect_port(handle, 15, output_l);             // Output L
+    descriptor->connect_port(handle, 16, output_r);             // Output R
+    descriptor->connect_port(handle, 17, &store_settings);      // Store settings
     
     printf("Processing settings:\n");
     printf("  Gain: %.1f dB\n", gain);
@@ -155,6 +164,11 @@ int main(int argc, char *argv[]) {
     if (declick_enable) {
         printf("  Spike threshold: %.1f dB\n", spike_threshold);
         printf("  Spike width: %.1f ms\n", spike_width);
+    }
+    printf("  Notch filter: %s\n", notch_enable ? "enabled" : "disabled");
+    if (notch_enable) {
+        printf("  Notch frequency: %.1f Hz\n", notch_freq);
+        printf("  Notch Q: %.1f\n", notch_q);
     }
     printf("\nProcessing...\n");
     
