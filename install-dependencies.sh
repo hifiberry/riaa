@@ -29,6 +29,7 @@ case "$DISTRO" in
             gcc \
             make \
             ladspa-sdk \
+            libsndfile1-dev \
             sox \
             python3 \
             python3-pip \
@@ -41,6 +42,7 @@ case "$DISTRO" in
             gcc \
             make \
             ladspa-devel \
+            libsndfile-devel \
             sox \
             python3 \
             python3-pip \
@@ -52,6 +54,7 @@ case "$DISTRO" in
         sudo pacman -Sy --noconfirm \
             base-devel \
             ladspa \
+            libsndfile \
             sox \
             python \
             python-pip \
@@ -64,6 +67,7 @@ case "$DISTRO" in
             gcc \
             make \
             ladspa-devel \
+            libsndfile-devel \
             sox \
             python3 \
             python3-pip \
@@ -76,6 +80,7 @@ case "$DISTRO" in
         echo "Please install the following packages manually:"
         echo "  - Build tools (gcc, make)"
         echo "  - LADSPA SDK (development headers)"
+        echo "  - libsndfile (development headers)"
         echo "  - SoX (Sound eXchange)"
         echo "  - Python 3 with pip"
         echo "  - Python matplotlib library"
