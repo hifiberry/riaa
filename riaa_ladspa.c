@@ -80,6 +80,12 @@ typedef struct {
     LADSPA_Data default_gain;
     LADSPA_Data default_subsonic_sel;
     LADSPA_Data default_riaa_enable;
+    LADSPA_Data default_declick_enable;
+    LADSPA_Data default_spike_threshold;
+    LADSPA_Data default_spike_width;
+    LADSPA_Data default_notch_enable;
+    LADSPA_Data default_notch_freq;
+    LADSPA_Data default_notch_q;
     
     // RIAA processing states for left and right channels
     RIAAChannelState channel_l;
@@ -135,6 +141,12 @@ static LADSPA_Handle instantiate_RIAA(
         plugin->default_gain = config_get_float(&config, RIAA_PORT_NAME_GAIN, 0.0f);
         plugin->default_subsonic_sel = config_get_float(&config, RIAA_PORT_NAME_SUBSONIC_FILTER, 0.0f);
         plugin->default_riaa_enable = config_get_float(&config, RIAA_PORT_NAME_ENABLE, 1.0f);
+        plugin->default_declick_enable = config_get_float(&config, RIAA_PORT_NAME_DECLICK_ENABLE, 0.0f);
+        plugin->default_spike_threshold = config_get_float(&config, RIAA_PORT_NAME_SPIKE_THRESHOLD, 20.0f);
+        plugin->default_spike_width = config_get_float(&config, RIAA_PORT_NAME_SPIKE_WIDTH, 1.0f);
+        plugin->default_notch_enable = config_get_float(&config, RIAA_PORT_NAME_NOTCH_ENABLE, 0.0f);
+        plugin->default_notch_freq = config_get_float(&config, RIAA_PORT_NAME_NOTCH_FREQ, 50.0f);
+        plugin->default_notch_q = config_get_float(&config, RIAA_PORT_NAME_NOTCH_Q, 10.0f);
         
         // Find the sample rate index
         plugin->sample_rate_idx = get_sample_rate_index(sample_rate);
@@ -224,9 +236,36 @@ static void connect_port_RIAA(
 static void activate_RIAA(LADSPA_Handle instance) {
     RIAA *plugin = (RIAA *)instance;
     
-    // NOTE: Do NOT write to control ports here!
-    // The host has already set the control port values before calling activate().
-    // Writing to them here would overwrite the host's settings.
+    // Apply saved configuration values to control ports
+    // The host will have set control ports to their default values (from hints),
+    // but we want to override them with saved settings from config file
+    if (plugin->gain) {
+        *(plugin->gain) = plugin->default_gain;
+    }
+    if (plugin->subsonic_sel) {
+        *(plugin->subsonic_sel) = plugin->default_subsonic_sel;
+    }
+    if (plugin->riaa_enable) {
+        *(plugin->riaa_enable) = plugin->default_riaa_enable;
+    }
+    if (plugin->declick_enable) {
+        *(plugin->declick_enable) = plugin->default_declick_enable;
+    }
+    if (plugin->spike_threshold) {
+        *(plugin->spike_threshold) = plugin->default_spike_threshold;
+    }
+    if (plugin->spike_width) {
+        *(plugin->spike_width) = plugin->default_spike_width;
+    }
+    if (plugin->notch_enable) {
+        *(plugin->notch_enable) = plugin->default_notch_enable;
+    }
+    if (plugin->notch_freq) {
+        *(plugin->notch_freq) = plugin->default_notch_freq;
+    }
+    if (plugin->notch_q) {
+        *(plugin->notch_q) = plugin->default_notch_q;
+    }
     
     // Reset RIAA processing states
     riaa_channel_reset(&plugin->channel_l);
@@ -261,15 +300,17 @@ static void run_RIAA(
     LADSPA_Data *output_l = plugin->output_l;
     LADSPA_Data *output_r = plugin->output_r;
     
-    // Safely read control ports with NULL checks and defaults
+    // Safely read control ports with NULL checks and defaults from config
     LADSPA_Data gain_db = plugin->gain ? *(plugin->gain) : plugin->default_gain;
     LADSPA_Data gain = db_to_voltage(gain_db);
     int subsonic_sel = plugin->subsonic_sel ? (int)(*(plugin->subsonic_sel) + 0.5f) : (int)plugin->default_subsonic_sel;
     int riaa_enable = plugin->riaa_enable ? (int)(*(plugin->riaa_enable) + 0.5f) : (int)plugin->default_riaa_enable;
-    int declick_enable = plugin->declick_enable ? (int)(*(plugin->declick_enable) + 0.5f) : 0;
-    int notch_enable = plugin->notch_enable ? (int)(*(plugin->notch_enable) + 0.5f) : 0;
-    float notch_freq = plugin->notch_freq ? *(plugin->notch_freq) : 50.0f;
-    float notch_q = plugin->notch_q ? *(plugin->notch_q) : 10.0f;
+    int declick_enable = plugin->declick_enable ? (int)(*(plugin->declick_enable) + 0.5f) : (int)plugin->default_declick_enable;
+    int notch_enable = plugin->notch_enable ? (int)(*(plugin->notch_enable) + 0.5f) : (int)plugin->default_notch_enable;
+    float spike_threshold = plugin->spike_threshold ? *(plugin->spike_threshold) : plugin->default_spike_threshold;
+    float spike_width = plugin->spike_width ? *(plugin->spike_width) : plugin->default_spike_width;
+    float notch_freq = plugin->notch_freq ? *(plugin->notch_freq) : plugin->default_notch_freq;
+    float notch_q = plugin->notch_q ? *(plugin->notch_q) : plugin->default_notch_q;
     
     // Update notch filter coefficients if parameters changed
     if (notch_enable && (notch_freq != plugin->last_notch_freq || notch_q != plugin->last_notch_q)) {
@@ -406,6 +447,28 @@ static void run_RIAA(
         
         snprintf(value_str, sizeof(value_str), "%d", riaa_enable);
         config_set(&config, RIAA_PORT_NAME_ENABLE, value_str);
+        
+        // Save declick settings
+        int declick_enable = (int)(*(plugin->declick_enable) + 0.5f);
+        snprintf(value_str, sizeof(value_str), "%d", declick_enable);
+        config_set(&config, RIAA_PORT_NAME_DECLICK_ENABLE, value_str);
+        
+        snprintf(value_str, sizeof(value_str), "%.1f", *(plugin->spike_threshold));
+        config_set(&config, RIAA_PORT_NAME_SPIKE_THRESHOLD, value_str);
+        
+        snprintf(value_str, sizeof(value_str), "%.1f", *(plugin->spike_width));
+        config_set(&config, RIAA_PORT_NAME_SPIKE_WIDTH, value_str);
+        
+        // Save notch filter settings
+        int notch_enable = (int)(*(plugin->notch_enable) + 0.5f);
+        snprintf(value_str, sizeof(value_str), "%d", notch_enable);
+        config_set(&config, RIAA_PORT_NAME_NOTCH_ENABLE, value_str);
+        
+        snprintf(value_str, sizeof(value_str), "%.1f", *(plugin->notch_freq));
+        config_set(&config, RIAA_PORT_NAME_NOTCH_FREQ, value_str);
+        
+        snprintf(value_str, sizeof(value_str), "%.1f", *(plugin->notch_q));
+        config_set(&config, RIAA_PORT_NAME_NOTCH_Q, value_str);
         
         // Save to config file
         char *config_path = config_build_path("riaa");
