@@ -21,7 +21,7 @@ void config_init(PluginConfig *config) {
     }
 }
 
-// Build config file path: ~/.config/ladspa/<pluginname>.ini
+// Build config file path: ~/.state/ladspa/<pluginname>.ini
 char* config_build_path(const char *plugin_name) {
     if (!plugin_name) {
         return NULL;
@@ -40,12 +40,12 @@ char* config_build_path(const char *plugin_name) {
         return NULL;
     }
     
-    // Build path: ~/.config/ladspa/<pluginname>.ini
-    size_t len = strlen(home) + strlen("/.config/ladspa/") + strlen(plugin_name) + strlen(".ini") + 1;
+    // Build path: ~/.state/ladspa/<pluginname>.ini
+    size_t len = strlen(home) + strlen("/.state/ladspa/") + strlen(plugin_name) + strlen(".ini") + 1;
     char *path = (char *)malloc(len);
     
     if (path) {
-        snprintf(path, len, "%s/.config/ladspa/%s.ini", home, plugin_name);
+        snprintf(path, len, "%s/.state/ladspa/%s.ini", home, plugin_name);
     }
     
     return path;

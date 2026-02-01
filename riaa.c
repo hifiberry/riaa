@@ -86,7 +86,7 @@ static LADSPA_Handle instantiate_RIAA(
         plugin->declick_config.threshold = 150;  // Default spike threshold
         plugin->declick_config.click_width_ms = 1.0f;  // Default 1ms
         
-        // Load configuration from ~/.config/ladspa/riaa.ini
+        // Load configuration from ~/.state/ladspa/riaa.ini
         PluginConfig config;
         config_init(&config);
         

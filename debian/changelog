@@ -1,0 +1,22 @@
+ladspa-riaa (1.1.0-1) stable; urgency=medium
+
+  * Changed configuration file location from ~/.config to ~/.state
+  * Added priority.driver = 1 to PipeWire configuration
+
+ -- HiFiBerry <support@hifiberry.com>  Sat, 01 Feb 2026 12:00:00 +0000
+
+ladspa-riaa (1.0.0-1) stable; urgency=medium
+
+  * Initial release
+  * RIAA phono preamp equalization plugin
+  * LADSPA plugin format
+  * Subsonic filtering with 1st and 2nd order options
+  * Adjustable gain control
+  * Declick feature for vinyl pop/click removal
+  * Notch filter for mains hum removal
+  * Command-line processing utility
+  * Configuration file support
+  * PipeWire configuration for automatic turntable routing
+  * WirePlumber rules for ALSA input connection
+
+ -- HiFiBerry <support@hifiberry.com>  Thu, 30 Jan 2026 12:00:00 +0000

@@ -1,0 +1,34 @@
+Source: ladspa-riaa
+Section: sound
+Priority: optional
+Maintainer: HiFiBerry <support@hifiberry.com>
+Build-Depends: debhelper-compat (= 13),
+               gcc,
+               make,
+               ladspa-sdk,
+               libsndfile1-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/hifiberry/riaa
+Vcs-Git: https://github.com/hifiberry/riaa.git
+Vcs-Browser: https://github.com/hifiberry/riaa
+
+Package: ladspa-riaa
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         pipewire,
+         pipewire-pulse | pipewire-audio-client-libraries,
+         wireplumber
+Description: RIAA phono preamp equalization LADSPA plugin
+ RIAA phono preamp equalization plugin for vinyl playback with optional
+ subsonic filtering. Provides LADSPA plugin format.
+ .
+ Features:
+  - RIAA Equalization for accurate vinyl playback
+  - Optional subsonic filter (1st or 2nd order highpass at 20Hz)
+  - Adjustable gain control (-40dB to +40dB)
+  - Optional declick for click/pop removal
+  - Optional notch filter for mains hum removal
+  - Configuration file support for default settings
+  - Command-line utility for batch processing
+  - Supports multiple sample rates (44.1, 48, 88.2, 96, 176.4, 192 kHz)

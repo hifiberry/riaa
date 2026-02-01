@@ -13,7 +13,7 @@ LV2_INSTALL_DIR = /usr/local/lib/lv2
 # LV2 bundle directory
 LV2_BUNDLE = lv2/riaa.lv2
 
-.PHONY: all ladspa lv2 clean install install-ladspa install-lv2 uninstall
+.PHONY: all ladspa lv2 clean install install-ladspa install-lv2 uninstall deb
 
 all: ladspa lv2 riaa_process
 
@@ -89,3 +89,6 @@ uninstall:
 	rm -f $(LADSPA_INSTALL_DIR)/riaa.so
 	rm -rf $(LV2_INSTALL_DIR)/riaa.lv2
 	@echo "Uninstalled RIAA plugins"
+
+deb:
+	dpkg-buildpackage -us -uc -b

@@ -1,0 +1,32 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	$(MAKE) ladspa riaa_process
+
+override_dh_auto_install:
+	$(MAKE) LADSPA_INSTALL_DIR=$(CURDIR)/debian/ladspa-riaa/usr/lib/ladspa \
+	        install-ladspa
+	# Install the command-line utility
+	mkdir -p $(CURDIR)/debian/ladspa-riaa/usr/bin
+	install -m 755 riaa_process $(CURDIR)/debian/ladspa-riaa/usr/bin/
+	# Install PipeWire configuration files
+	mkdir -p $(CURDIR)/debian/ladspa-riaa/etc/pipewire/pipewire.conf.d
+	install -m 644 pipewire/90-riaa.conf $(CURDIR)/debian/ladspa-riaa/etc/pipewire/pipewire.conf.d/
+	mkdir -p $(CURDIR)/debian/ladspa-riaa/etc/xdg/wireplumber/wireplumber.conf.d
+	install -m 644 pipewire/99-riaa-autoconnect.conf $(CURDIR)/debian/ladspa-riaa/etc/xdg/wireplumber/wireplumber.conf.d/
+	# Install documentation
+	mkdir -p $(CURDIR)/debian/ladspa-riaa/usr/share/doc/ladspa-riaa
+	install -m 644 README.md $(CURDIR)/debian/ladspa-riaa/usr/share/doc/ladspa-riaa/
+	install -m 644 TEST-PLUGIN.md $(CURDIR)/debian/ladspa-riaa/usr/share/doc/ladspa-riaa/
+	install -m 644 pipewire/README.md $(CURDIR)/debian/ladspa-riaa/usr/share/doc/ladspa-riaa/README.pipewire.md
+
+override_dh_auto_clean:
+	$(MAKE) clean || true
+
+override_dh_compress:
+	dh_compress -X.md

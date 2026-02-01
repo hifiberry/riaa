@@ -2,7 +2,7 @@
  * configfile.h - Generic LADSPA plugin configuration file support
  * 
  * Provides utilities to load plugin configuration from INI files
- * located in ~/.config/ladspa/<pluginname>.ini
+ * located in ~/.state/ladspa/<pluginname>.ini
  */
 
 #ifndef CONFIGFILE_H
@@ -26,7 +26,7 @@ typedef struct {
     int count;
 } PluginConfig;
 
-// Build config file path: ~/.config/ladspa/<pluginname>.ini
+// Build config file path: ~/.state/ladspa/<pluginname>.ini
 // Returns allocated string that must be freed, or NULL on error
 char* config_build_path(const char *plugin_name);
 

@@ -120,7 +120,7 @@ sudo make install-lv2          # Install LV2 only
 
 ## Configuration
 
-The plugin supports loading default parameter values from `~/.config/ladspa/riaa.ini`.
+The plugin supports loading default parameter values from `~/.state/ladspa/riaa.ini`.
 
 **Example configuration file:**
 ```ini

@@ -121,7 +121,7 @@ static LADSPA_Handle instantiate_RIAA(
         plugin->last_notch_freq = 0.0f;
         plugin->last_notch_q = 0.0f;
         
-        // Load configuration from ~/.config/ladspa/riaa.ini
+        // Load configuration from ~/.state/ladspa/riaa.ini
         PluginConfig config;
         config_init(&config);
         
