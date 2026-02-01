@@ -7,3 +7,12 @@ test_riaa_clicks
 test_click_energy
 test_lpc
 riaa_process
+
+# Debian build artifacts
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.debhelper.log
+debian/*.substvars
+debian/ladspa-riaa/
+debian/riaa/
